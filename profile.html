@@ -1,96 +1,112 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>My Profile - Sathi Mere</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profile</title>
 
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #ffe6f2;
+  padding: 15px;
+}
 
-  <style>
-    body { font-family: Arial; background: #ffe6f2; margin:0; padding:0; }
-    .container { max-width:430px; margin:auto; padding:20px; }
-    .card { background:#fff; padding:20px; border-radius:15px; box-shadow:0 3px 8px rgba(0,0,0,0.1); }
-    h2 { text-align:center; color:#ff5fa2; margin-bottom:20px; }
-    label { font-weight:bold; color:#ff4d94; }
-    input, select, textarea {
-      width:100%; padding:12px; margin:8px 0 14px 0;
-      border-radius:10px; border:1px solid #ff99c8; font-size:15px;
-    }
-    textarea { height:80px; resize:none; }
-    button {
-      width:100%; padding:14px; background:#ff5fa2; color:white;
-      border:none; border-radius:12px; font-size:16px; margin-top:10px;
-      cursor:pointer;
-    }
-    .profile-photo {
-      width:130px; height:130px; border-radius:50%;
-      object-fit:cover; display:block; margin:auto; margin-bottom:12px;
-      border:3px solid #ff99c8;
-    }
-  </style>
+.container {
+  background: #fff;
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 0 10px #ffb6d9;
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid #ff7fbd;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  background: #ff4fa3;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 17px;
+  font-weight: bold;
+}
+#profilePic {
+  width: 120px;
+  height: 120px;
+  border-radius: 100%;
+  object-fit: cover;
+  border: 3px solid #ff4fa3;
+  display: block;
+  margin: 10px auto;
+}
+</style>
 </head>
 
 <body>
 <div class="container">
-  <h2>My Profile</h2>
 
-  <div class="card">
+<h2>Your Profile</h2>
 
-    <img id="photoPreview" class="profile-photo"
-      src="https://via.placeholder.com/150?text=Photo">
+<img id="profilePic" src="default.jpg">
 
-    <label>Upload Photo</label>
-    <input type="file" id="photoUpload" accept="image/*">
+<label>Upload Photo</label>
+<input type="file" id="photoUpload">
 
-    <label>Name</label>
-    <input id="name">
+<label>Name</label>
+<input type="text" id="name">
 
-    <label>Age</label>
-    <input id="age" type="number">
+<label>Age</label>
+<input type="number" id="age">
 
-    <label>Gender</label>
-    <select id="gender">
-      <option>Male</option>
-      <option>Female</option>
-    </select>
+<label>Gender</label>
+<select id="gender">
+  <option value="Male">Male</option>
+  <option value="Female">Female</option>
+</select>
 
-    <label>Caste</label>
-    <input id="caste">
+<label>Caste</label>
+<input type="text" id="caste">
 
-    <label>Looking For</label>
-    <input id="choice">
+<label>Choice</label>
+<input type="text" id="choice">
 
-    <label>State</label>
-    <input id="state">
+<label>State</label>
+<input type="text" id="state">
 
-    <label>District</label>
-    <input id="location">
+<label>Location</label>
+<input type="text" id="location">
 
-    <label>Interests</label>
-    <input id="interest">
+<label>Interest</label>
+<input type="text" id="interest">
 
-    <label>Bio</label>
-    <textarea id="bio"></textarea>
+<label>Bio</label>
+<textarea id="bio"></textarea>
 
-    <label>Mobile</label>
-    <input id="mobile">
+<label>Phone Privacy</label>
+<select id="phonePrivacy">
+  <option value="public">Public</option>
+  <option value="private">Private</option>
+</select>
 
-    <label>Mobile Visibility</label>
-    <select id="mobileVisible">
-      <option value="public">Public</option>
-      <option value="private">Private</option>
-    </select>
+<button onclick="saveProfile()">Save Profile</button>
 
-    <button id="saveBtn">Save Profile</button>
-  </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
 <script>
-// ---------------- FIREBASE CONFIG ----------------
+
+// ---------------- FIREBASE CONFIG (READY) ----------------
 const firebaseConfig = {
   apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
   authDomain: "sathimere-415fa.firebaseapp.com",
@@ -100,71 +116,84 @@ const firebaseConfig = {
   messagingSenderId: "290492321074",
   appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
 };
+
 firebase.initializeApp(firebaseConfig);
 
-const auth = firebase.auth();
-const db = firebase.firestore();
-const storage = firebase.storage();
+let uid = null;
 
-let uid = "";
-
-// Check Login
-auth.onAuthStateChanged(async user => {
-  if(!user) return window.location="login.html";
-  uid = user.uid;
-  loadProfile();
+// ---------------- AUTH CHECK ----------------
+firebase.auth().onAuthStateChanged(user => {
+  if (!user) {
+    window.location = "login.html";
+  } else {
+    uid = user.uid;
+    loadProfile();
+  }
 });
 
-// Load Profile Data
-async function loadProfile() {
-  const doc = await db.collection("users").doc(uid).get();
-  if(doc.exists){
-    const d = doc.data();
+// ---------------- LOAD PROFILE ----------------
+function loadProfile() {
+  firebase.database().ref("users/" + uid).once("value", snap => {
+    let d = snap.val();
+    if (!d) return;
+
+    if (d.photoURL) document.getElementById("profilePic").src = d.photoURL;
+
     name.value = d.name || "";
     age.value = d.age || "";
-    gender.value = d.gender || "Male";
+    gender.value = d.gender || "";
     caste.value = d.caste || "";
     choice.value = d.choice || "";
     state.value = d.state || "";
     location.value = d.location || "";
     interest.value = d.interest || "";
     bio.value = d.bio || "";
-    mobile.value = d.mobile || "";
-    mobileVisible.value = d.mobileVisible || "private";
-    if(d.photoURL) photoPreview.src = d.photoURL;
+    phonePrivacy.value = d.phonePrivacy || "public";
+  });
+}
+
+// ---------------- SAVE PROFILE (100% WORKING PHOTO UPLOAD) ----------------
+async function saveProfile() {
+  let file = document.getElementById("photoUpload").files[0];
+  let finalPhotoURL = null;
+
+  try {
+
+    // --- UPLOAD PHOTO ---
+    if (file) {
+      let storageRef = firebase.storage().ref("profilePics/" + uid + ".jpg");
+      let upload = await storageRef.put(file);
+      finalPhotoURL = await upload.ref.getDownloadURL();
+      document.getElementById("profilePic").src = finalPhotoURL;
+    }
+
+    // --- SAVE DATA ---
+    let data = {
+      name: name.value,
+      age: age.value,
+      gender: gender.value,
+      caste: caste.value,
+      choice: choice.value,
+      state: state.value,
+      location: location.value,
+      interest: interest.value,
+      bio: bio.value,
+      phonePrivacy: phonePrivacy.value
+    };
+
+    if (finalPhotoURL) data.photoURL = finalPhotoURL;
+
+    await firebase.database().ref("users/" + uid).update(data);
+
+    alert("Profile Saved Successfully ✔");
+
+  } catch (err) {
+    alert("Error: " + err.message);
+    console.log(err);
   }
 }
 
-// Save Profile
-saveBtn.onclick = async () => {
-  const photoFile = photoUpload.files[0];
-  let photoURL = null;
-
-  if(photoFile){
-    const ref = storage.ref(`profilePhotos/${uid}.jpg`);
-    await ref.put(photoFile);
-    photoURL = await ref.getDownloadURL();
-  }
-
-  const data = {
-    name: name.value,
-    age: age.value,
-    gender: gender.value,
-    caste: caste.value,
-    choice: choice.value,
-    state: state.value,
-    location: location.value,
-    interest: interest.value,
-    bio: bio.value,
-    mobile: mobile.value,
-    mobileVisible: mobileVisible.value
-  };
-
-  if(photoURL) data.photoURL = photoURL;
-
-  await db.collection("users").doc(uid).set(data, { merge:true });
-  alert("Profile Saved!");
-};
 </script>
+
 </body>
 </html>
