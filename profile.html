@@ -6,24 +6,25 @@
 
 <style>
 body {
-  font-family: Arial, sans-serif;
-  background: #ffe6f2;
+  margin: 0;
   padding: 15px;
+  background: #ffe6f2;
+  font-family: Arial;
 }
 
-.container {
+.card {
   background: #fff;
   padding: 15px;
   border-radius: 12px;
-  box-shadow: 0 0 10px #ffb6d9;
+  box-shadow: 0 0 10px #ff9acb;
 }
 
 input, select, textarea {
   width: 100%;
   padding: 10px;
-  margin-top: 8px;
+  margin-top: 7px;
   border-radius: 8px;
-  border: 1px solid #ff7fbd;
+  border: 1px solid #ff6fb7;
 }
 
 button {
@@ -31,29 +32,31 @@ button {
   padding: 12px;
   margin-top: 12px;
   background: #ff4fa3;
-  border: none;
-  border-radius: 10px;
   color: #fff;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: bold;
+  border: none;
+  border-radius: 8px;
 }
+
 #profilePic {
   width: 120px;
   height: 120px;
   border-radius: 100%;
+  display: block;
+  margin: auto;
   object-fit: cover;
   border: 3px solid #ff4fa3;
-  display: block;
-  margin: 10px auto;
+  background: #fff;
 }
 </style>
 </head>
 
 <body>
-<div class="container">
 
-<h2>Your Profile</h2>
+<div class="card">
 
+<h2 style="text-align:center;">My Profile</h2>
 <img id="profilePic" src="default.jpg">
 
 <label>Upload Photo</label>
@@ -67,8 +70,8 @@ button {
 
 <label>Gender</label>
 <select id="gender">
-  <option value="Male">Male</option>
-  <option value="Female">Female</option>
+<option>Male</option>
+<option>Female</option>
 </select>
 
 <label>Caste</label>
@@ -91,22 +94,21 @@ button {
 
 <label>Phone Privacy</label>
 <select id="phonePrivacy">
-  <option value="public">Public</option>
-  <option value="private">Private</option>
+<option value="public">Public</option>
+<option value="private">Private</option>
 </select>
 
-<button onclick="saveProfile()">Save Profile</button>
+<button onclick="saveProfile()">SAVE</button>
 
 </div>
 
+<!-- FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
 <script>
-
-// ---------------- FIREBASE CONFIG (READY) ----------------
 const firebaseConfig = {
   apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
   authDomain: "sathimere-415fa.firebaseapp.com",
@@ -116,12 +118,11 @@ const firebaseConfig = {
   messagingSenderId: "290492321074",
   appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
 };
-
 firebase.initializeApp(firebaseConfig);
 
 let uid = null;
 
-// ---------------- AUTH CHECK ----------------
+// AUTH CHECK
 firebase.auth().onAuthStateChanged(user => {
   if (!user) {
     window.location = "login.html";
@@ -131,14 +132,13 @@ firebase.auth().onAuthStateChanged(user => {
   }
 });
 
-// ---------------- LOAD PROFILE ----------------
+// LOAD PROFILE
 function loadProfile() {
-  firebase.database().ref("users/" + uid).once("value", snap => {
+  firebase.database().ref("users/" + uid).once("value").then(snap => {
     let d = snap.val();
     if (!d) return;
 
-    if (d.photoURL) document.getElementById("profilePic").src = d.photoURL;
-
+    if (d.photoURL) profilePic.src = d.photoURL;
     name.value = d.name || "";
     age.value = d.age || "";
     gender.value = d.gender || "";
@@ -152,22 +152,22 @@ function loadProfile() {
   });
 }
 
-// ---------------- SAVE PROFILE (100% WORKING PHOTO UPLOAD) ----------------
+// SAVE PROFILE
 async function saveProfile() {
-  let file = document.getElementById("photoUpload").files[0];
-  let finalPhotoURL = null;
+  let file = photoUpload.files[0];
+  let photoURL = null;
 
   try {
 
-    // --- UPLOAD PHOTO ---
+    // Upload photo
     if (file) {
-      let storageRef = firebase.storage().ref("profilePics/" + uid + ".jpg");
-      let upload = await storageRef.put(file);
-      finalPhotoURL = await upload.ref.getDownloadURL();
-      document.getElementById("profilePic").src = finalPhotoURL;
+      let storeRef = firebase.storage().ref("profilePics/" + uid + ".jpg");
+      let up = await storeRef.put(file);
+      photoURL = await up.ref.getDownloadURL();
+      profilePic.src = photoURL;
     }
 
-    // --- SAVE DATA ---
+    // Save data
     let data = {
       name: name.value,
       age: age.value,
@@ -181,19 +181,18 @@ async function saveProfile() {
       phonePrivacy: phonePrivacy.value
     };
 
-    if (finalPhotoURL) data.photoURL = finalPhotoURL;
+    if (photoURL) data.photoURL = photoURL;
 
     await firebase.database().ref("users/" + uid).update(data);
 
-    alert("Profile Saved Successfully ✔");
+    alert("Profile Saved ✔");
 
   } catch (err) {
     alert("Error: " + err.message);
     console.log(err);
   }
 }
-
 </script>
 
 </body>
-</html>
+  </html>
