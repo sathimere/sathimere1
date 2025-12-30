@@ -16,12 +16,21 @@
     .card { background:#fff; padding:20px; border-radius:15px; box-shadow:0 3px 8px rgba(0,0,0,0.1); }
     h2 { text-align:center; color:#ff5fa2; margin-bottom:20px; }
     label { font-weight:bold; color:#ff4d94; }
-    input, select, textarea { width:100%; padding:12px; margin:8px 0 14px 0; border-radius:10px; border:1px solid #ff99c8; font-size:15px; }
+    input, select, textarea {
+      width:100%; padding:12px; margin:8px 0 14px 0;
+      border-radius:10px; border:1px solid #ff99c8; font-size:15px;
+    }
     textarea { height:80px; resize:none; }
-    button { width:100%; padding:14px; background:#ff5fa2; color:white; border:none; border-radius:12px; font-size:16px; margin-top:10px; cursor:pointer; }
-    button:hover { background:#ff408c; }
-    .profile-photo { width:130px; height:130px; border-radius:50%; object-fit:cover; display:block; margin:auto; margin-bottom:12px; border:3px solid #ff99c8; }
-    .backBtn { background:#ff9acb; margin-top:15px; }
+    button {
+      width:100%; padding:14px; background:#ff5fa2; color:white;
+      border:none; border-radius:12px; font-size:16px; margin-top:10px;
+      cursor:pointer;
+    }
+    .profile-photo {
+      width:130px; height:130px; border-radius:50%;
+      object-fit:cover; display:block; margin:auto; margin-bottom:12px;
+      border:3px solid #ff99c8;
+    }
   </style>
 </head>
 
@@ -31,12 +40,12 @@
 
   <div class="card">
 
-    <!-- Profile Photo -->
-    <img id="photoPreview" class="profile-photo" src="https://via.placeholder.com/150?text=Photo">
-    <label>Upload Profile Photo</label>
+    <img id="photoPreview" class="profile-photo"
+      src="https://via.placeholder.com/150?text=Photo">
+
+    <label>Upload Photo</label>
     <input type="file" id="photoUpload" accept="image/*">
 
-    <!-- Fields -->
     <label>Name</label>
     <input id="name">
 
@@ -52,33 +61,31 @@
     <label>Caste</label>
     <input id="caste">
 
-    <label>Looking For (Choice)</label>
-    <input id="choice" placeholder="e.g., Hindu boy, simple partner">
+    <label>Looking For</label>
+    <input id="choice">
 
     <label>State</label>
     <input id="state">
 
-    <label>District / City</label>
+    <label>District</label>
     <input id="location">
 
     <label>Interests</label>
-    <input id="interest" placeholder="e.g., music, travel">
+    <input id="interest">
 
     <label>Bio</label>
     <textarea id="bio"></textarea>
 
-    <label>Mobile Number</label>
+    <label>Mobile</label>
     <input id="mobile">
 
-    <label>Show Mobile Number</label>
+    <label>Mobile Visibility</label>
     <select id="mobileVisible">
       <option value="public">Public</option>
       <option value="private">Private</option>
     </select>
 
     <button id="saveBtn">Save Profile</button>
-    <button class="backBtn" onclick="window.location='index.html'">Back to Home</button>
-
   </div>
 </div>
 
@@ -87,6 +94,7 @@
 const firebaseConfig = {
   apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
   authDomain: "sathimere-415fa.firebaseapp.com",
+  databaseURL: "https://sathimere-415fa-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "sathimere-415fa",
   storageBucket: "sathimere-415fa.appspot.com",
   messagingSenderId: "290492321074",
@@ -100,61 +108,63 @@ const storage = firebase.storage();
 
 let uid = "";
 
-// ------------- CHECK LOGIN -------------
+// Check Login
 auth.onAuthStateChanged(async user => {
   if(!user) return window.location="login.html";
   uid = user.uid;
   loadProfile();
 });
 
-// ------------- LOAD PROFILE -------------
+// Load Profile Data
 async function loadProfile() {
   const doc = await db.collection("users").doc(uid).get();
   if(doc.exists){
     const d = doc.data();
-    document.getElementById("name").value = d.name || "";
-    document.getElementById("age").value = d.age || "";
-    document.getElementById("gender").value = d.gender || "Male";
-    document.getElementById("caste").value = d.caste || "";
-    document.getElementById("choice").value = d.choice || "";
-    document.getElementById("state").value = d.state || "";
-    document.getElementById("location").value = d.location || "";
-    document.getElementById("interest").value = d.interest || "";
-    document.getElementById("bio").value = d.bio || "";
-    document.getElementById("mobile").value = d.mobile || "";
-    document.getElementById("mobileVisible").value = d.mobileVisible || "private";
-    if(d.photoURL) document.getElementById("photoPreview").src = d.photoURL;
+    name.value = d.name || "";
+    age.value = d.age || "";
+    gender.value = d.gender || "Male";
+    caste.value = d.caste || "";
+    choice.value = d.choice || "";
+    state.value = d.state || "";
+    location.value = d.location || "";
+    interest.value = d.interest || "";
+    bio.value = d.bio || "";
+    mobile.value = d.mobile || "";
+    mobileVisible.value = d.mobileVisible || "private";
+    if(d.photoURL) photoPreview.src = d.photoURL;
   }
 }
 
-// ------------- SAVE PROFILE -------------
-document.getElementById("saveBtn").addEventListener("click", async ()=>{
-  const name = document.getElementById("name").value;
-  const age = document.getElementById("age").value;
-  const gender = document.getElementById("gender").value;
-  const caste = document.getElementById("caste").value;
-  const choice = document.getElementById("choice").value;
-  const state = document.getElementById("state").value;
-  const location = document.getElementById("location").value;
-  const interest = document.getElementById("interest").value;
-  const bio = document.getElementById("bio").value;
-  const mobile = document.getElementById("mobile").value;
-  const mobileVisible = document.getElementById("mobileVisible").value;
-  const photoFile = document.getElementById("photoUpload").files[0];
-
+// Save Profile
+saveBtn.onclick = async () => {
+  const photoFile = photoUpload.files[0];
   let photoURL = null;
+
   if(photoFile){
     const ref = storage.ref(`profilePhotos/${uid}.jpg`);
     await ref.put(photoFile);
     photoURL = await ref.getDownloadURL();
   }
 
-  const data = { name, age, gender, caste, choice, state, location, interest, bio, mobile, mobileVisible };
+  const data = {
+    name: name.value,
+    age: age.value,
+    gender: gender.value,
+    caste: caste.value,
+    choice: choice.value,
+    state: state.value,
+    location: location.value,
+    interest: interest.value,
+    bio: bio.value,
+    mobile: mobile.value,
+    mobileVisible: mobileVisible.value
+  };
+
   if(photoURL) data.photoURL = photoURL;
 
   await db.collection("users").doc(uid).set(data, { merge:true });
-  alert("Profile Saved Successfully!");
-});
+  alert("Profile Saved!");
+};
 </script>
 </body>
 </html>
