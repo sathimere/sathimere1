@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Profile - Sathi Mere</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #ffe6f2;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      padding: 20px;
+      max-width: 430px;
+      margin: auto;
+    }
+
+    .card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      text-align: center;
+      color: #ff5fa2;
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-weight: bold;
+      color: #ff4d94;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0 14px 0;
+      border-radius: 10px;
+      border: 1px solid #ff99c8;
+      background: #fff;
+      font-size: 15px;
+    }
+
+    textarea {
+      height: 80px;
+      resize: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #ff5fa2;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background: #ff408c;
+    }
+
+    .profile-photo {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+      margin: auto;
+      margin-bottom: 12px;
+      border: 3px solid #ff99c8;
+    }
+
+    .backBtn {
+      background: #ff9acb;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2>My Profile</h2>
+
+  <div class="card">
+
+    <!-- Profile Photo -->
+    <img id="photoPreview" class="profile-photo" src="https://via.placeholder.com/150?text=Photo">
+    <label>Upload Profile Photo</label>
+    <input type="file" id="photoUpload" accept="image/*">
+
+    <!-- Fields -->
+    <label>Name</label>
+    <input id="name">
+
+    <label>Age</label>
+    <input id="age" type="number">
+
+    <label>Gender</label>
+    <select id="gender">
+      <option>Male</option>
+      <option>Female</option>
+    </select>
+
+    <label>Caste</label>
+    <input id="caste">
+
+    <label>Looking For (Choice)</label>
+    <input id="choice" placeholder="e.g., Hindu boy, simple partner">
+
+    <label>State</label>
+    <input id="state">
+
+    <label>District / City</label>
+    <input id="location">
+
+    <label>Interests</label>
+    <input id="interest" placeholder="e.g., music, travel">
+
+    <label>Bio</label>
+    <textarea id="bio"></textarea>
+
+    <label>Mobile Number</label>
+    <input id="mobile">
+
+    <label>Show Mobile Number</label>
+    <select id="mobileVisible">
+      <option value="public">Public</option>
+      <option value="private">Private</option>
+    </select>
+
+    <button onclick="saveProfile()">Save Profile</button>
+    <button class="backBtn" onclick="window.location='index.html'">Back to Home</button>
+
+  </div>
+</div>
+
+<script>
+// ---------------- FIREBASE INIT ----------------
+const firebaseConfig = {
+  apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
+  authDomain: "sathimere-415fa.firebaseapp.com",
+  projectId: "sathimere-415fa",
+  storageBucket: "sathimere-415fa.firebasestorage.app",
+  messagingSenderId: "290492321074",
+  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+let uid = "";
+
+
+// ------------- CHECK LOGIN -------------
+auth.onAuthStateChanged(async user => {
+  if (!user) return window.location = "login.html";
+  uid = user.uid;
+  loadProfile();
+});
+
+
+// ------------- LOAD PROFILE -------------
+async function loadProfile() {
+  let doc = await db.collection("users").doc(uid).get();
+  if (doc.exists) {
+    let d = doc.data();
+
+    document.getElementById("name").value = d.name || "";
+    document.getElementById("age").value = d.age || "";
+    document.getElementById("gender").value = d.gender || "Male";
+    document.getElementById("caste").value = d.caste || "";
+    document.getElementById("choice").value = d.choice || "";
+    document.getElementById("state").value = d.state || "";
+    document.getElementById("location").value = d.location || "";
+    document.getElementById("interest").value = d.interest || "";
+    document.getElementById("bio").value = d.bio || "";
+    document.getElementById("mobile").value = d.mobile || "";
+    document.getElementById("mobileVisible").value = d.mobileVisible || "private";
+
+    if (d.photoURL) {
+      document.getElementById("photoPreview").src = d.photoURL;
+    }
+  }
+}
+
+
+// ------------- SAVE PROFILE -------------
+async function saveProfile() {
+  
+  let photoFile = document.getElementById("photoUpload").files[0];
+  let photoURL = null;
+
+  if (photoFile) {
+    let ref = storage.ref(`profilePhotos/${uid}.jpg`);
+    await ref.put(photoFile);
+    photoURL = await ref.getDownloadURL();
+  }
+
+  let data = {
+    name: name.value,
+    age: age.value,
+    gender: gender.value,
+    caste: caste.value,
+    choice: choice.value,
+    state: state.value,
+    location: location.value,
+    interest: interest.value,
+    bio: bio.value,
+    mobile: mobile.value,
+    mobileVisible: mobileVisible.value
+  };
+
+  if (photoURL) data.photoURL = photoURL;
+
+  await db.collection("users").doc(uid).set(data, { merge: true });
+
+  alert("Profile Saved Successfully!");
+}
+
+</script>
+
+</body>
+</html>
