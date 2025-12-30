@@ -56,7 +56,7 @@ body{
   border-radius:12px;
   box-shadow:0 0 6px rgba(0,0,0,0.09);
 }
-input,select{
+input, select, textarea{
   width:100%;
   padding:12px;
   border:1px solid #ccc;
@@ -101,11 +101,26 @@ label{
     <label>Mobile</label>
     <input id="mobile" type="text">
 
+    <label>Mobile Visibility</label>
+    <select id="mobilePrivacy">
+      <option value="public">Public</option>
+      <option value="private">Private</option>
+    </select>
+
     <label>City</label>
     <input id="city" type="text">
 
     <label>State</label>
     <input id="state" type="text">
+
+    <label>District</label>
+    <input id="district" type="text">
+
+    <label>Caste</label>
+    <input id="caste" type="text">
+
+    <label>Address</label>
+    <textarea id="address"></textarea>
 
     <label>Gender</label>
     <select id="gender">
@@ -114,6 +129,12 @@ label{
       <option value="Female">Female</option>
       <option value="Other">Other</option>
     </select>
+
+    <label>Choice (Partner Preference)</label>
+    <textarea id="choice"></textarea>
+
+    <label>Interest</label>
+    <textarea id="interest"></textarea>
 
     <button class="save-btn" onclick="saveProfile()">Save Profile</button>
   </div>
@@ -136,7 +157,6 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// Login anonymously
 auth.signInAnonymously();
 
 // ImgBB Key
@@ -155,9 +175,15 @@ auth.onAuthStateChanged(async (user)=>{
         document.getElementById("name").value = d.name || "";
         document.getElementById("email").value = d.email || "";
         document.getElementById("mobile").value = d.mobile || "";
+        document.getElementById("mobilePrivacy").value = d.mobilePrivacy || "public";
         document.getElementById("city").value = d.city || "";
         document.getElementById("state").value = d.state || "";
+        document.getElementById("district").value = d.district || "";
+        document.getElementById("caste").value = d.caste || "";
+        document.getElementById("address").value = d.address || "";
         document.getElementById("gender").value = d.gender || "";
+        document.getElementById("choice").value = d.choice || "";
+        document.getElementById("interest").value = d.interest || "";
 
         if(d.photo){
             document.getElementById("profileImg").src = d.photo;
@@ -175,14 +201,19 @@ async function saveProfile(){
     let name = document.getElementById("name").value;
     let email = document.getElementById("email").value;
     let mobile = document.getElementById("mobile").value;
+    let mobilePrivacy = document.getElementById("mobilePrivacy").value;
     let city = document.getElementById("city").value;
     let state = document.getElementById("state").value;
+    let district = document.getElementById("district").value;
+    let caste = document.getElementById("caste").value;
+    let address = document.getElementById("address").value;
     let gender = document.getElementById("gender").value;
+    let choice = document.getElementById("choice").value;
+    let interest = document.getElementById("interest").value;
 
     let fileInput = document.getElementById("photo");
     let photoURL = document.getElementById("profileImg").src;
 
-    // If new photo selected → upload
     if(fileInput.files.length > 0){
         let file = fileInput.files[0];
         let base64 = await toBase64(file);
@@ -200,16 +231,16 @@ async function saveProfile(){
         photoURL = json.data.url;
     }
 
-    // Save to Firestore
     await db.collection("users").doc(uid).set({
-        name, email, mobile, city, state, gender, photo: photoURL
+        name, email, mobile, mobilePrivacy,
+        city, state, district, caste, address,
+        gender, choice, interest,
+        photo: photoURL
     });
 
     alert("Profile updated!");
 }
 
-
-// Convert image to Base64
 function toBase64(file){
     return new Promise((resolve,reject)=>{
         let r = new FileReader();
@@ -221,4 +252,4 @@ function toBase64(file){
 </script>
 
 </body>
-  </html>
+                   </html>
