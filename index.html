@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sathi Mere - Home</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    body { font-family: Arial; padding-bottom: 80px; }
+
+    .header {
+      text-align: center;
+      padding: 15px;
+      font-size: 22px;
+      font-weight: bold;
+      background: #f3f3f3;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .profile-card {
+      padding: 15px;
+      margin: 10px;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+
+    .nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      padding: 10px;
+      display: flex;
+      justify-content: space-around;
+      border-top: 1px solid #ccc;
+    }
+
+    .nav button {
+      padding: 10px 12px;
+      border: none;
+      background: #eee;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    #userInfo {
+      background: #eef6ff;
+      padding: 10px;
+      margin: 12px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="header">Sathi Mere – Matches</div>
+
+<div id="userInfo"></div>
+
+<h3 style="margin-left:12px;">Profiles</h3>
+
+<div id="profileList">Loading...</div>
+
+<!-- Bottom Navigation -->
+<div class="nav">
+  <button onclick="window.location='profile.html'">Profile</button>
+  <button onclick="alert('Wallet Coming Soon')">Wallet</button>
+  <button onclick="alert('Chat Coming Soon')">Chat</button>
+  <button onclick="alert('Match Coming Soon')">Match</button>
+  <button onclick="logout()">Logout</button>
+</div>
+
+
+<script>
+// ---------------------- FIREBASE CONFIG ----------------------
+const firebaseConfig = {
+  apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
+  authDomain: "sathimere-415fa.firebaseapp.com",
+  projectId: "sathimere-415fa",
+  storageBucket: "sathimere-415fa.firebasestorage.app",
+  messagingSenderId: "290492321074",
+  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let currentUid = "";
+
+
+// ---------- CHECK LOGIN STATUS ----------
+auth.onAuthStateChanged(async user => {
+  if (!user) {
+    window.location = "login.html";
+    return;
+  }
+
+  currentUid = user.uid;
+  loadUserInfo(user);
+  loadProfiles();
+});
+
+
+// ---------- SHOW LOGGED-IN USER INFO ----------
+function loadUserInfo(user) {
+  let box = document.getElementById("userInfo");
+  box.innerHTML = `
+     <b>Logged in as:</b><br>
+     ${user.email}<br>
+     <span style="font-size:12px;color:#666;">UID: ${user.uid}</span>
+  `;
+}
+
+
+// ---------- LOAD ALL PROFILES FROM FIRESTORE ----------
+async function loadProfiles() {
+  let list = document.getElementById("profileList");
+  list.innerHTML = "Loading profiles...";
+
+  const snap = await db.collection("users").get();
+
+  list.innerHTML = "";
+
+  snap.forEach(doc => {
+    let p = doc.data();
+
+    list.innerHTML += `
+      <div class="profile-card">
+        <h3>${p.name || "No Name"}</h3>
+        <p>Age: ${p.age || "N/A"}</p>
+        <p>Gender: ${p.gender || "N/A"}</p>
+      </div>
+    `;
+  });
+}
+
+
+// ---------- LOGOUT ----------
+function logout() {
+  auth.signOut().then(() => {
+    window.location = "login.html";
+  });
+}
+
+</script>
+
+</body>
+</html>
