@@ -63,27 +63,30 @@ function closeMenu(){ menu.style.width = "0"; }
 
 let CURRENT_USER = null;
 
-auth.onAuthStateChanged(async (user)=>{
+auth.onAuthStateChanged(async (user) => {
     if(!user) return window.location="login.html";
     CURRENT_USER = user;
     loadUsers(user.uid);
-    listenIncomingRequests(user.uid);
 });
 
-async function loadUsers(myId){
+async function loadUsers(myId) {
     const list = document.getElementById("userList");
-    list.innerHTML="Loading...";
+    list.innerHTML = "Loading...";
+
     let meDoc = await db.collection("users").doc(myId).get();
     let myGender = meDoc.data().gender;
-    let opposite = myGender==="Male"?"Female":"Male";
+    let opposite = myGender === "Male" ? "Female" : "Male";
 
-    db.collection("users").where("gender","==",opposite).onSnapshot(snap=>{
+    db.collection("users").where("gender","==",opposite)
+      .onSnapshot(snap=>{
         list.innerHTML="";
         snap.forEach(doc=>{
-            let u = doc.data(); let uid = doc.id;
+            let u = doc.data();
+            let uid = doc.id;
+
             let card = document.createElement("div");
             card.className="user-card";
-            card.innerHTML=`
+            card.innerHTML = `
                 <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
                 <div style="flex:1">
                     <div class="name">${u.name} ${u.surname}</div>
@@ -94,14 +97,19 @@ async function loadUsers(myId){
                 </div>
             `;
             list.appendChild(card);
-            checkStatus(myId,uid,u.gender);
-            document.getElementById("btn_"+uid).onclick=()=>sendRequest(myId,uid,u.gender);
+
+            checkStatus(myId, uid, u.gender);
+            document.getElementById("btn_" + uid).onclick = ()=> sendRequest(myId, uid, u.gender);
         });
     });
 }
 
-async function sendLike(uid){
-    await db.collection("likes").add({from:CURRENT_USER.uid,to:uid,time:Date.now()});
+async function sendLike(uid) {
+    await db.collection("likes").add({
+        from: CURRENT_USER.uid,
+        to: uid,
+        time: Date.now()
+    });
     alert("Liked!");
 }
 
@@ -109,88 +117,52 @@ function viewProfile(uid){
     window.location="view-profile.html?id="+uid;
 }
 
-async function checkStatus(myId,otherId,gender){
-    let btn = document.getElementById("btn_"+otherId);
+async function checkStatus(myId, otherId, gender){
+    let btn = document.getElementById("btn_" + otherId);
     let doc = await db.collection("chatRequests").doc(myId+"_"+otherId).get();
     if(doc.exists){
         let status = doc.data().status;
         if(status==="pending"){
-            btn.innerText="Request Sent"; btn.disabled=true; btn.classList.add("btn-disabled");
+            btn.innerText="Request Sent";
+            btn.disabled=true;
+            btn.classList.add("btn-disabled");
         }
         if(status==="accepted"){
             btn.innerText="Chat Now";
-            btn.onclick=()=>window.location="chat-room.html?u="+otherId;
+            btn.onclick = ()=> window.location="chat-room.html?u="+otherId;
         }
     }
 }
 
-// SEND REQUEST (male/female)
-async function sendRequest(fromId,toId,toGender){
-    let fromDoc = await db.collection("users").doc(fromId).get();
-    let fromGender = fromDoc.data().gender;
-    let fromWallet = fromDoc.data().wallet||0;
+async function sendRequest(myId,toId,toGender){
+    // Male user pays Rs 10
+    let maleDoc = await db.collection("users").doc(myId).get();
+    let wallet = Number(maleDoc.data().wallet || 0);
 
-    if(fromGender==="Male" && toGender==="Female"){
-        if(fromWallet<10){ alert("Insufficient balance! Rs 10 required."); return; }
-        await db.collection("users").doc(fromId).update({wallet: fromWallet-10});
+    if(maleDoc.data().gender === "Male"){
+        if(wallet<10){
+            alert("Insufficient balance! Rs 10 required.");
+            return;
+        }
+        await db.collection("users").doc(myId).update({wallet: wallet-10});
     }
 
-    await db.collection("chatRequests").doc(fromId+"_"+toId).set({
-        from: fromId,
+    // Create request
+    await db.collection("chatRequests").doc(myId+"_"+toId).set({
+        from: myId,
         to: toId,
         status:"pending",
-        timestamp:Date.now()
+        timestamp: Date.now()
     });
 
     alert("Chat request sent!");
-    checkStatus(fromId,toId,toGender);
+    checkStatus(myId,toId,toGender);
 }
 
-// LISTEN INCOMING REQUESTS
-function listenIncomingRequests(uid){
-    db.collection("chatRequests").where("to","==",uid).onSnapshot(snap=>{
-        snap.docChanges().forEach(change=>{
-            if(change.type==="added"){
-                let data = change.doc.data();
-                alert(`New chat request from ${data.from}`);
-            }
-        });
-    });
+/* LOGOUT */
+function logout(){
+    auth.signOut().then(()=> window.location="login.html");
 }
-
-// ACCEPT REQUEST
-async function acceptRequest(docId,fromId,toId){
-    let toDoc = await db.collection("users").doc(toId).get();
-    let toGender = toDoc.data().gender;
-
-    if(toGender==="Male"){ // male accepts female request → deduct Rs 10
-        let wallet = toDoc.data().wallet||0;
-        if(wallet<10){ alert("Insufficient balance!"); return; }
-        await db.collection("users").doc(toId).update({wallet:wallet-10});
-    }
-
-    await db.collection("chatRequests").doc(docId).update({status:"accepted"});
-    let chatID = fromId<toId?fromId+"_"+toId:toId+"_"+fromId;
-    await db.collection("chats").doc(chatID).set({users:[fromId,toId],lastMsg:"",time:Date.now()});
-    alert("Chat started!");
-    window.location="chat-room.html?u="+fromId;
-}
-
-// REJECT REQUEST
-async function rejectRequest(docId,fromId,toId){
-    let fromDoc = await db.collection("users").doc(fromId).get();
-    let fromGender = fromDoc.data().gender;
-
-    if(fromGender==="Male"){ // refund if male sent request
-        let wallet = fromDoc.data().wallet||0;
-        await db.collection("users").doc(fromId).update({wallet:wallet+10});
-    }
-
-    await db.collection("chatRequests").doc(docId).delete();
-    alert("Request rejected. Rs 10 refunded if male.");
-}
-
-function logout(){ auth.signOut().then(()=>window.location="login.html"); }
 </script>
 </body>
 </html>
