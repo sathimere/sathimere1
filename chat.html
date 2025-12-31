@@ -19,6 +19,7 @@ body {margin:0;font-family:Arial,sans-serif;background:#f2f2f2;}
 .info {flex:1;font-size:15px;color:#333;}
 .btn {padding:6px 12px;border:none;border-radius:8px;margin-left:5px;cursor:pointer;font-size:14px;font-weight:bold;}
 .accept {background:#ff1493;color:#fff;}
+.reject {background:#d9534f;color:#fff;}
 .bottom-nav {position:fixed;bottom:0;width:100%;background:#fff;border-top:1px solid #ddd;display:flex;justify-content:space-around;padding:10px 0;box-shadow:0 -3px 10px rgba(0,0,0,0.1);}
 .bottom-nav div {text-align:center;color:#ff1493;font-weight:bold;display:flex;flex-direction:column;gap:3px;cursor:pointer;font-size:13px;}
 .icon {font-size:24px;}
@@ -81,13 +82,16 @@ auth.onAuthStateChanged(async u=>{
     loadChatRequests();
 });
 
-/* LOAD CHAT REQUESTS (INCOMING + ACCEPTED) */
+/* LOAD CHAT REQUESTS */
 async function loadChatRequests(){
     const list = document.getElementById('requestList');
     list.innerHTML = "";
 
-    // Incoming requests
-    const incoming = await db.collection("requests").where("to","==",CURRENT.uid).where("status","==","pending").get();
+    // Incoming pending requests
+    const incoming = await db.collection("requests")
+        .where("to","==",CURRENT.uid)
+        .where("status","==","pending").get();
+
     for(let d of incoming.docs){
         const r = d.data();
         const userDoc = await db.collection("users").doc(r.from).get();
@@ -100,12 +104,37 @@ async function loadChatRequests(){
                 <b>${u.name} ${u.surname}</b> wants to chat
             </div>
             <button class="btn accept" onclick="acceptRequest('${d.id}','${r.from}')">Open Chat</button>
+            <button class="btn reject" onclick="rejectRequest('${d.id}')">Reject</button>
         `;
         list.appendChild(card);
     }
 
-    // Requests sent by me and accepted
-    const sentAccepted = await db.collection("requests").where("from","==",CURRENT.uid).where("status","==","accepted").get();
+    // Accepted requests (user can open chat)
+    const accepted = await db.collection("requests")
+        .where("status","==","accepted")
+        .where("to","==",CURRENT.uid).get();
+
+    for(let d of accepted.docs){
+        const r = d.data();
+        const userDoc = await db.collection("users").doc(r.from).get();
+        const u = userDoc.data();
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+            <img src="${u.photo||'https://via.placeholder.com/150'}">
+            <div class="info">
+                <b>${u.name} ${u.surname}</b> Chat
+            </div>
+            <button class="btn accept" onclick="openChat('${CURRENT.uid}','${r.from}')">Open Chat</button>
+        `;
+        list.appendChild(card);
+    }
+
+    // Requests sent by CURRENT user and accepted
+    const sentAccepted = await db.collection("requests")
+        .where("from","==",CURRENT.uid)
+        .where("status","==","accepted").get();
+
     for(let d of sentAccepted.docs){
         const r = d.data();
         const userDoc = await db.collection("users").doc(r.to).get();
@@ -123,12 +152,18 @@ async function loadChatRequests(){
     }
 }
 
-/* ACCEPT REQUEST → Open chat & create room */
+/* ACCEPT REQUEST → Open chat */
 async function acceptRequest(id, other){
     await db.collection("requests").doc(id).update({status:"accepted"});
-    const chatID = CURRENT.uid < other ? CURRENT.uid + "_" + other : other + "_" + CURRENT.uid;
+    const chatID = CURRENT.uid < other ? CURRENT.uid+"_"+other : other+"_"+CURRENT.uid;
     await db.collection("chats").doc(chatID).set({users:[CURRENT.uid,other],lastMsg:"",time:Date.now()});
-    location.href = "chat-room.html?id="+chatID;
+    loadChatRequests();
+}
+
+/* REJECT REQUEST → Delete */
+async function rejectRequest(id){
+    await db.collection("requests").doc(id).delete();
+    loadChatRequests();
 }
 
 /* OPEN CHAT */
