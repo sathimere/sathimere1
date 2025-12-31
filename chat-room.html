@@ -1,165 +1,183 @@
 <!DOCTYPE html>
 <html>
 <head>
+<title>Sathi Mere - Chat Room</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SathiMere - Chat Room</title>
-
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
+<script src="firebase.js"></script>
 <style>
-body{margin:0;font-family:Arial,sans-serif;background:#f2f2f2;}
-.topbar{height:55px;background:#ff4fa5;color:#fff;display:flex;align-items:center;justify-content:center;position:fixed;width:100%;top:0;z-index:10;font-size:20px;}
-.topbar span:first-child{position:absolute;left:15px;cursor:pointer;}
-.topbar span:last-child{position:absolute;right:15px;cursor:pointer;background:#fff;color:#ff1493;padding:6px 12px;border-radius:12px;font-weight:bold;font-size:14px;}
-.chat-container{margin-top:65px;margin-bottom:70px;padding:10px;display:flex;flex-direction:column;gap:8px;}
-.message{padding:10px 14px;border-radius:15px;max-width:75%;position:relative;display:inline-block;}
-.sent{background:#ff1493;color:#fff;align-self:flex-end;border-bottom-right-radius:2px;}
-.received{background:#e0e0e0;color:#333;align-self:flex-start;border-bottom-left-radius:2px;}
-.sender-info{font-size:12px;color:#555;margin-bottom:2px;}
-.input-container{position:fixed;bottom:0;width:100%;display:flex;padding:8px;background:#fff;box-shadow:0 -2px 6px rgba(0,0,0,0.1);}
-.input-container input{flex:1;padding:10px;border-radius:20px;border:1px solid #ccc;outline:none;font-size:16px;}
-.input-container button{padding:10px 16px;margin-left:6px;border:none;border-radius:20px;background:#ff1493;color:#fff;font-weight:bold;cursor:pointer;}
-.blocked-msg{color:#ff0000;font-size:14px;text-align:center;margin-top:20px;}
+body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
+.topbar { height:55px; background:#ff1493; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; width:100%; z-index:10; font-size:20px; }
+.topbar span:first-child { position:absolute; left:15px; cursor:pointer; font-size:22px; }
+.topbar button { position:absolute; right:15px; background:#fff; color:#ff1493; border:none; padding:5px 12px; border-radius:10px; cursor:pointer; font-weight:bold; }
+.chat-container { padding:70px 10px 100px; max-width:600px; margin:auto; display:flex; flex-direction:column; gap:10px; }
+.msg { padding:10px 15px; border-radius:15px; max-width:80%; word-wrap:break-word; position:relative; }
+.sender { background:#ff1493; color:#fff; align-self:flex-end; border-bottom-right-radius:0; }
+.receiver { background:#fff; color:#333; align-self:flex-start; border-bottom-left-radius:0; }
+.seen { font-size:10px; color:#eee; position:absolute; bottom:2px; right:5px; }
+.timestamp { font-size:10px; color:#666; position:absolute; bottom:2px; left:5px; }
+.input-container { position:fixed; bottom:0; width:100%; background:#fff; display:flex; padding:8px; box-shadow:0 -3px 10px rgba(0,0,0,0.1); gap:5px; }
+.input-container input { flex:1; padding:10px; border-radius:20px; border:1px solid #ccc; outline:none; }
+.input-container button { background:#ff1493; color:#fff; border:none; border-radius:20px; padding:10px 15px; cursor:pointer; font-weight:bold; }
+.typing-indicator { font-size:14px; color:#666; margin-bottom:5px; margin-left:5px; display:none; }
 </style>
 </head>
-
 <body>
+
 <div class="topbar">
-<span onclick="goBack()">←</span>Chat Room
-<span id="blockBtn" onclick="toggleBlock()">Block</span>
+<span onclick="goBack()">←</span>
+Chat Room
+<button id="blockBtn" onclick="toggleBlock()">Block</button>
 </div>
 
-<div class="chat-container" id="chatContainer"></div>
+<div class="chat-container" id="chatList">Loading...</div>
+<div class="typing-indicator" id="typingIndicator">Typing...</div>
 
 <div class="input-container">
-<input type="text" id="msgInput" placeholder="Type a message...">
+<input type="text" id="msgInput" placeholder="Type a message..." oninput="updateTyping(true)">
 <button onclick="sendMessage()">Send</button>
 </div>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
-  authDomain: "sathimere-415fa.firebaseapp.com",
-  projectId: "sathimere-415fa",
-  storageBucket: "sathimere-415fa.firebasestorage.app",
-  messagingSenderId: "290492321074",
-  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
-
 let CURRENT = null;
 let CHAT_ID = null;
-let OTHER_UID = null;
-let isBlocked = false;
-let unsubscribe = null;
+let OTHER_ID = null;
+let typingTimeout;
+let BLOCKED = false;
 
-/* MENU & NAV */
-function goBack(){ window.history.back(); }
+// Helper: format timestamp
+function formatTime(ts){
+    const d = new Date(ts);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate()-1);
 
-/* GET CHAT ID FROM URL */
-const params = new URLSearchParams(window.location.search);
-CHAT_ID = params.get('id');
+    if(d.toDateString()===today.toDateString()) return "Today " + d.getHours().toString().padStart(2,'0')+":"+d.getMinutes().toString().padStart(2,'0');
+    if(d.toDateString()===yesterday.toDateString()) return "Yesterday " + d.getHours().toString().padStart(2,'0')+":"+d.getMinutes().toString().padStart(2,'0');
 
-auth.onAuthStateChanged(async u=>{
-    if(!u){ location.href="login.html"; return; }
-    CURRENT = u;
-    await initChat();
-});
+    return d.getDate().toString().padStart(2,'0') + "-" + (d.getMonth()+1).toString().padStart(2,'0') + "-" + d.getFullYear() + " " + d.getHours().toString().padStart(2,'0')+":"+d.getMinutes().toString().padStart(2,'0');
+}
 
-/* INIT CHAT */
-async function initChat(){
-    const chatDoc = await db.collection('chats').doc(CHAT_ID).get();
-    const chatData = chatDoc.data();
-    OTHER_UID = chatData.users.find(uid => uid!==CURRENT.uid);
+// Go back
+function goBack(){ 
+    db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:false});
+    location.href="chat.html"; 
+}
+
+// Auth & init
+auth.onAuthStateChanged(async user=>{
+    if(!user) return location.href="login.html";
+    CURRENT = user;
+
+    const params = new URLSearchParams(window.location.search);
+    CHAT_ID = params.get("id");
+    if(!CHAT_ID) return alert("Invalid Chat Room!");
+
+    const parts = CHAT_ID.split("_");
+    OTHER_ID = parts[0]===CURRENT.uid ? parts[1] : parts[0];
+
+    db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:true});
 
     // Check block status
-    const blockDoc = await db.collection('blocks').doc(CURRENT.uid).get();
-    const blockedUsers = blockDoc.exists ? blockDoc.data().blocked || [] : [];
-    isBlocked = blockedUsers.includes(OTHER_UID);
-    updateBlockButton();
+    const chatDoc = await db.collection("chats").doc(CHAT_ID).get();
+    if(chatDoc.exists){
+        const data = chatDoc.data();
+        BLOCKED = data[CURRENT.uid+"_blocked"] || false;
+        document.getElementById("blockBtn").innerText = BLOCKED ? "Unblock" : "Block";
+    }
 
     loadMessages();
-}
+    listenTyping();
+});
 
-/* UPDATE BLOCK BUTTON TEXT */
-function updateBlockButton(){
-    document.getElementById('blockBtn').innerText = isBlocked ? "Unblock" : "Block";
-}
-
-/* TOGGLE BLOCK */
-async function toggleBlock(){
-    const blockRef = db.collection('blocks').doc(CURRENT.uid);
-    const doc = await blockRef.get();
-    let blockedUsers = doc.exists ? doc.data().blocked || [] : [];
-
-    if(isBlocked){
-        // Unblock
-        blockedUsers = blockedUsers.filter(uid => uid!==OTHER_UID);
-        isBlocked = false;
-    } else {
-        // Block
-        if(!blockedUsers.includes(OTHER_UID)) blockedUsers.push(OTHER_UID);
-        isBlocked = true;
-    }
-    await blockRef.set({blocked: blockedUsers});
-    updateBlockButton();
-    loadMessages(); // reload messages
-}
-
-/* REAL-TIME MESSAGE LISTENER */
+// Load messages
 function loadMessages(){
-    if(unsubscribe) unsubscribe(); // detach previous listener
-    const container = document.getElementById('chatContainer');
-    container.innerHTML = "";
+    const chatList = document.getElementById("chatList");
+    chatList.innerHTML = "";
 
-    if(isBlocked){
-        const div = document.createElement('div');
-        div.className = "blocked-msg";
-        div.innerText = "You have blocked this user. Messages will not appear.";
-        container.appendChild(div);
-        return;
-    }
+    db.collection("chats").doc(CHAT_ID).collection("messages")
+      .orderBy("time","asc")
+      .onSnapshot(snapshot=>{
+        chatList.innerHTML = "";
+        snapshot.forEach(async doc=>{
+            const m = doc.data();
+            const div = document.createElement("div");
+            div.className = "msg "+(m.from===CURRENT.uid?"sender":"receiver");
+            div.innerText = m.text;
 
-    unsubscribe = db.collection('chats').doc(CHAT_ID).collection('messages')
-        .orderBy('time')
-        .onSnapshot(snapshot=>{
-            container.innerHTML="";
-            snapshot.forEach(doc=>{
-                const m = doc.data();
-                const div = document.createElement('div');
-                div.className = "message " + (m.from===CURRENT.uid ? "sent":"received");
-                div.innerHTML = `<div class="sender-info">${m.from===CURRENT.uid ? 'You':m.name}</div>${m.msg}`;
-                container.appendChild(div);
-            });
-            container.scrollTop = container.scrollHeight;
+            if(m.from===CURRENT.uid){
+                const seen = document.createElement("span");
+                seen.className = "seen";
+                seen.innerText = m.seen?"Seen":"Sent";
+                div.appendChild(seen);
+            } else {
+                if(!m.seen){
+                    await db.collection("chats").doc(CHAT_ID).collection("messages").doc(doc.id).update({seen:true});
+                }
+            }
+
+            const time = document.createElement("span");
+            time.className = "timestamp";
+            time.innerText = formatTime(m.time);
+            div.appendChild(time);
+
+            chatList.appendChild(div);
         });
+        chatList.scrollTop = chatList.scrollHeight;
+    });
 }
 
-/* SEND MESSAGE */
+// Send message
 async function sendMessage(){
-    if(isBlocked) return; // cannot send if blocked
-    const input = document.getElementById('msgInput');
-    const msg = input.value.trim();
-    if(!msg) return;
-    input.value = "";
+    if(BLOCKED){ alert("You cannot send messages to a blocked user!"); return; }
+    const input = document.getElementById("msgInput");
+    const text = input.value.trim();
+    if(!text) return;
 
-    await db.collection('chats').doc(CHAT_ID).collection('messages').add({
+    await db.collection("chats").doc(CHAT_ID).collection("messages").add({
+        text: text,
         from: CURRENT.uid,
-        name: CURRENT.displayName || "You",
-        msg: msg,
-        time: Date.now()
+        to: OTHER_ID,
+        time: Date.now(),
+        seen:false
     });
 
-    await db.collection('chats').doc(CHAT_ID).update({
-        lastMsg: msg,
-        time: Date.now()
+    await db.collection("chats").doc(CHAT_ID).update({lastMsg:text, time:Date.now()});
+    input.value = "";
+    updateTyping(false);
+}
+
+// Typing indicator
+function updateTyping(isTyping){
+    db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_typing"]:isTyping});
+    clearTimeout(typingTimeout);
+    if(isTyping){
+        typingTimeout = setTimeout(()=>updateTyping(false),2000);
+    }
+}
+
+function listenTyping(){
+    const indicator = document.getElementById("typingIndicator");
+    db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{
+        const data = doc.data();
+        if(!data) return;
+        if(data[OTHER_ID+"_typing"]){
+            indicator.style.display = "block";
+        } else {
+            indicator.style.display = "none";
+        }
     });
+}
+
+// Block / Unblock
+async function toggleBlock(){
+    BLOCKED = !BLOCKED;
+    document.getElementById("blockBtn").innerText = BLOCKED ? "Unblock" : "Block";
+    await db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_blocked"]:BLOCKED});
 }
 </script>
+
 </body>
 </html>
