@@ -20,9 +20,22 @@ body{margin:0;font-family:Arial;background:#fff;color:#333;}
 #menu a:hover{background:#ffe0f1;}
 .closebtn{position:absolute;top:10px;right:10px;font-size:30px;}
 
-#reqSection{ display:none; }
-
 .section-title{text-align:center;color:#ff1493;font-size:20px;margin-top:70px;margin-bottom:10px;font-weight:bold;}
+
+.search-box{
+    padding:10px;
+    margin-top:60px;
+}
+.search-box input{
+    width:90%;
+    padding:12px;
+    border-radius:25px;
+    border:1px solid #ccc;
+    font-size:16px;
+    display:block;
+    margin:auto;
+    outline:none;
+}
 
 .list{padding:10px;margin-bottom:80px;}
 .card{background:#fff;border-radius:15px;box-shadow:0 4px 12px rgba(0,0,0,0.1);margin-bottom:15px;overflow:hidden;}
@@ -31,21 +44,10 @@ body{margin:0;font-family:Arial;background:#fff;color:#333;}
 .info{flex:1;padding:10px;font-size:16px;}
 .btn{background:#ff1493;color:#fff;padding:8px 12px;margin:4px;border:none;border-radius:8px;cursor:pointer;font-size:15px;}
 
-.search-box{
-    margin-top:60px;
-    padding:10px;
-    display:flex;
-    justify-content:center;
-}
-.search-box input{
-    width:90%;
-    padding:12px;
-    border-radius:25px;
-    border:1px solid #ccc;
-    font-size:16px;
-    outline:none;
-}
+.accept{background:#28a745}
+.reject{background:#d9534f}
 
+/* ⭐ BOTTOM NAV (3 BUTTONS) */
 .bottom-nav{
     position:fixed;
     bottom:0;
@@ -66,7 +68,13 @@ body{margin:0;font-family:Arial;background:#fff;color:#333;}
     flex-direction:column;
     gap:4px;
 }
-.icon{ font-size:26px; line-height:20px; }
+.icon{
+    font-size:26px;
+    line-height:20px;
+}
+
+/* Chat Request section hidden (logic working) */
+#reqList { display:none; }
 </style>
 </head>
 
@@ -78,31 +86,47 @@ Dashboard
 <span onclick="logout()">⏻</span>
 </div>
 
-<div id="menu">
-<a class="closebtn" onclick="closeMenu()">✖</a>
-<a href="profile.html">My Profile</a>
-<a href="wallet.html">Wallet</a>
-<a href="help.html">Help & Support</a>
-<a onclick="logout()">Logout</a>
-</div>
-
+<!-- SEARCH -->
 <div class="search-box">
     <input type="text" id="searchInput" placeholder="Search profiles..." onkeyup="filterProfiles()">
 </div>
 
-<div id="reqSection">
-<div class="section-title">Incoming Chat Requests 💬</div>
-<div class="list" id="reqList"></div>
+<!-- MENU -->
+<div id="menu">
+    <a class="closebtn" onclick="closeMenu()">✖</a>
+    <a href="profile.html">My Profile</a>
+    <a href="wallet.html">Wallet</a>
+    <a href="help.html">Help & Support</a>
+    <a onclick="logout()">Logout</a>
 </div>
 
+<!-- CHAT REQUESTS (HIDDEN FROM UI) -->
+<div id="reqList"></div>
+
+<!-- PROFILES -->
 <div class="section-title">Profiles</div>
 <div class="list" id="userList"></div>
 
+<!-- ⭐ NEW BOTTOM NAV (3 BUTTONS ONLY) -->
 <div class="bottom-nav">
-    <div onclick="location.href='like.html'"><span class="icon">💜</span>Likes</div>
-    <div onclick="location.href='chat.html'"><span class="icon">✉️</span>Messages</div>
-    <div onclick="location.href='profile.html'"><span class="icon">👤</span>Profile</div>
+
+    <div onclick="location.href='like.html'">
+        <span class="icon">💜</span>
+        Likes
+    </div>
+
+    <div onclick="location.href='chat.html'">
+        <span class="icon">✉️</span>
+        Messages
+    </div>
+
+    <div onclick="location.href='profile.html'">
+        <span class="icon">👤</span>
+        Profile
+    </div>
+
 </div>
+
 
 <script>
 /* Firebase */
@@ -126,38 +150,37 @@ function openMenu(){ menu.style.width="250px"; }
 function closeMenu(){ menu.style.width="0"; }
 function logout(){ auth.signOut().then(()=>location.href="login.html"); }
 
-/* 🟩 SAFE AUTH CHECK */
-auth.onAuthStateChanged(async (u)=>{
-    if(!u){ 
-        // delay to avoid false redirect
-        setTimeout(()=> location.href="login.html", 400);
-        return;
-    }
+/* INIT */
+auth.onAuthStateChanged(async u=>{
+    if(!u){ location.href="login.html"; return; }
     CURRENT=u;
     loadUsers();
+    loadRequests();
 });
 
 /* LOAD USERS */
 async function loadUsers(){
-    let meDoc = await db.collection("users").doc(CURRENT.uid).get();
-    if(!meDoc.exists) return;
+    let list=userList; list.innerHTML="";
 
-    let myGender = meDoc.data().gender || "Male";
+    let me=await db.collection("users").doc(CURRENT.uid).get();
+    let myGender=me.data().gender||"Male";
     let target = myGender==="Male" ? "Female" : "Male";
 
-    let q = await db.collection("users").where("gender","==",target).get();
+    let q=await db.collection("users").where("gender","==",target).get();
 
-    ALL_USERS = [];
+    ALL_USERS=[];
+
     q.forEach(doc=>{
         let u=doc.data();
         u.id=doc.id;
+
         ALL_USERS.push(u);
     });
 
     renderProfiles(ALL_USERS);
 }
 
-/* RENDER */
+/* RENDER USERS */
 function renderProfiles(data){
     userList.innerHTML="";
     data.forEach(u=>{
@@ -169,6 +192,7 @@ function renderProfiles(data){
             <div class="info">
                 <b>${u.name} ${u.surname}</b><br>
                 Age: ${u.age||'-'}<br>
+                <button class="btn" onclick="sendLike('${u.id}')">💜 Like</button>
                 <button class="btn" onclick="sendRequest('${u.id}')">Chat Request</button>
                 <button class="btn" onclick="viewProfile('${u.id}')">View Profile</button>
             </div>
@@ -177,13 +201,23 @@ function renderProfiles(data){
     });
 }
 
-/* SEARCH */
+/* SEARCH FILTER */
 function filterProfiles(){
     let txt = searchInput.value.toLowerCase();
     let filtered = ALL_USERS.filter(u =>
         (u.name+" "+u.surname).toLowerCase().includes(txt)
     );
     renderProfiles(filtered);
+}
+
+/* SEND LIKE */
+async function sendLike(uid){
+    await db.collection("likes").add({
+        from: CURRENT.uid,
+        to: uid,
+        time: Date.now()
+    });
+    alert("Liked!");
 }
 
 /* SEND REQUEST */
@@ -197,7 +231,31 @@ async function sendRequest(uid){
     alert("Request Sent!");
 }
 
-/* VIEW PROFILE */
+/* LOAD REQUESTS (LOGIC ACTIVE BUT HIDDEN UI) */
+async function loadRequests(){
+    let q=await db.collection("requests").where("to","==",CURRENT.uid).get();
+
+    for(let d of q.docs){
+        let r=d.data();
+    }
+}
+
+/* ACCEPT */
+async function acceptReq(id, other){
+    await db.collection("requests").doc(id).update({status:"accepted"});
+
+    let chatID = CURRENT.uid < other ?
+                 CURRENT.uid+"_"+other : other+"_"+CURRENT.uid;
+
+    await db.collection("chats").doc(chatID).set({
+        users:[CURRENT.uid,other],
+        lastMsg:"",
+        time:Date.now()
+    });
+
+    location.href="chat.html?id="+chatID;
+}
+
 function viewProfile(uid){
     location.href="profile-view.html?id="+uid;
 }
