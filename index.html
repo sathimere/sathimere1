@@ -12,7 +12,6 @@
 <script src="firebase.js"></script>
 
 <style>
-
 body {
     font-family: Arial;
     background: #ffe4f0;
@@ -249,7 +248,7 @@ async function loadUsers(myId) {
             list.appendChild(card);
 
             checkStatus(myId, uid);
-            document.getElementById("btn_" + uid).onclick = () => sendRequest(myId, uid, u.gender);
+            document.getElementById("btn_" + uid).onclick = () => sendRequest(myId, uid, myGender);
         });
     });
 }
@@ -295,10 +294,12 @@ async function checkStatus(myId, otherId) {
 }
 
 /* SEND CHAT REQUEST WITH WALLET DEDUCTION */
-async function sendRequest(myId, toId, gender){
-    // Male pays Rs 10
-    if(gender === "Female"){
-        let maleDoc = await db.collection("users").doc(myId).get();
+async function sendRequest(myId, toId, myGender){
+    // Only male pays
+    let maleId = myGender === "Male" ? myId : null;
+
+    if(maleId){
+        let maleDoc = await db.collection("users").doc(maleId).get();
         let wallet = maleDoc.data().wallet || 0;
 
         if(wallet < 10){
@@ -306,7 +307,7 @@ async function sendRequest(myId, toId, gender){
             return;
         }
 
-        await db.collection("users").doc(myId).update({
+        await db.collection("users").doc(maleId).update({
             wallet: wallet - 10
         });
     }
@@ -364,4 +365,4 @@ function logout() {
 </script>
 
 </body>
-        </html>
+</html>
