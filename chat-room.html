@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SathiMere - Chat Room</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#f2f2f2;}
+.topbar{height:55px;background:#ff4fa5;color:#fff;display:flex;align-items:center;justify-content:center;position:fixed;width:100%;top:0;z-index:10;font-size:20px;}
+.topbar span:first-child{position:absolute;left:15px;cursor:pointer;}
+.topbar span:last-child{position:absolute;right:15px;cursor:pointer;}
+.chat-container{margin-top:65px;margin-bottom:70px;padding:10px;display:flex;flex-direction:column;gap:8px;}
+.message{padding:10px 14px;border-radius:15px;max-width:75%;position:relative;display:inline-block;}
+.sent{background:#ff1493;color:#fff;align-self:flex-end;border-bottom-right-radius:2px;}
+.received{background:#e0e0e0;color:#333;align-self:flex-start;border-bottom-left-radius:2px;}
+.sender-info{font-size:12px;color:#555;margin-bottom:2px;}
+.input-container{position:fixed;bottom:0;width:100%;display:flex;padding:8px;background:#fff;box-shadow:0 -2px 6px rgba(0,0,0,0.1);}
+.input-container input{flex:1;padding:10px;border-radius:20px;border:1px solid #ccc;outline:none;font-size:16px;}
+.input-container button{padding:10px 16px;margin-left:6px;border:none;border-radius:20px;background:#ff1493;color:#fff;font-weight:bold;cursor:pointer;}
+</style>
+</head>
+
+<body>
+<div class="topbar">
+<span onclick="goBack()">←</span>Chat Room
+<span onclick="logout()">⏻</span>
+</div>
+
+<div class="chat-container" id="chatContainer"></div>
+
+<div class="input-container">
+<input type="text" id="msgInput" placeholder="Type a message...">
+<button onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
+  authDomain: "sathimere-415fa.firebaseapp.com",
+  projectId: "sathimere-415fa",
+  storageBucket: "sathimere-415fa.firebasestorage.app",
+  messagingSenderId: "290492321074",
+  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+let CURRENT = null;
+let CHAT_ID = null;
+
+/* MENU & LOGOUT */
+function logout(){ auth.signOut().then(()=>location.href="login.html"); }
+function goBack(){ window.history.back(); }
+
+/* GET CHAT ID FROM URL */
+const params = new URLSearchParams(window.location.search);
+CHAT_ID = params.get('id');
+
+auth.onAuthStateChanged(async u=>{
+    if(!u){ location.href="login.html"; return; }
+    CURRENT = u;
+    loadMessages();
+});
+
+/* REAL-TIME MESSAGE LISTENER */
+function loadMessages(){
+    const container = document.getElementById('chatContainer');
+    db.collection('chats').doc(CHAT_ID).collection('messages')
+      .orderBy('time')
+      .onSnapshot(snapshot=>{
+        container.innerHTML="";
+        snapshot.forEach(doc=>{
+            const m = doc.data();
+            const div = document.createElement('div');
+            div.className = "message " + (m.from===CURRENT.uid ? "sent":"received");
+            div.innerHTML = `<div class="sender-info">${m.from===CURRENT.uid ? 'You':m.name}</div>${m.msg}`;
+            container.appendChild(div);
+        });
+        container.scrollTop = container.scrollHeight;
+    });
+}
+
+/* SEND MESSAGE */
+async function sendMessage(){
+    const input = document.getElementById('msgInput');
+    const msg = input.value.trim();
+    if(!msg) return;
+    input.value = "";
+    
+    // Get other user name for display
+    const chatDoc = await db.collection('chats').doc(CHAT_ID).get();
+    const chatData = chatDoc.data();
+    const otherUID = chatData.users.find(uid => uid!==CURRENT.uid);
+    const otherDoc = await db.collection('users').doc(otherUID).get();
+    const otherData = otherDoc.data();
+
+    await db.collection('chats').doc(CHAT_ID).collection('messages').add({
+        from: CURRENT.uid,
+        name: CURRENT.displayName || "You",
+        msg: msg,
+        time: Date.now()
+    });
+
+    await db.collection('chats').doc(CHAT_ID).update({
+        lastMsg: msg,
+        time: Date.now()
+    });
+}
+</script>
+</body>
+</html>
