@@ -1,175 +1,100 @@
 <!DOCTYPE html>
 <html>
 <head>
+<title>Sathi Mere - Chat Requests</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SathiMere - Chat</title>
-
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
+<script src="firebase.js"></script>
 <style>
-body {margin:0;font-family:Arial,sans-serif;background:#f2f2f2;}
-.topbar {height:55px;background:#ff4fa5;color:#fff;display:flex;align-items:center;justify-content:center;position:fixed;width:100%;top:0;z-index:10;font-size:20px;}
-.topbar span:first-child {position:absolute;left:15px;cursor:pointer;font-size:22px;}
-.list {padding:10px;margin-top:65px;margin-bottom:80px;}
-.card {background:#fff;border-radius:15px;box-shadow:0 4px 12px rgba(0,0,0,0.1);margin-bottom:10px;overflow:hidden;display:flex;align-items:center;padding:10px;}
-.card img {width:60px;height:60px;border-radius:50%;object-fit:cover;margin-right:10px;}
-.info {flex:1;font-size:15px;color:#333;}
-.btn {padding:6px 12px;border:none;border-radius:8px;margin-left:5px;cursor:pointer;font-size:14px;font-weight:bold;}
-.accept {background:#ff1493;color:#fff;}
-.reject {background:#d9534f;color:#fff;}
-.bottom-nav {position:fixed;bottom:0;width:100%;background:#fff;border-top:1px solid #ddd;display:flex;justify-content:space-around;padding:10px 0;box-shadow:0 -3px 10px rgba(0,0,0,0.1);}
-.bottom-nav div {text-align:center;color:#ff1493;font-weight:bold;display:flex;flex-direction:column;gap:3px;cursor:pointer;font-size:13px;}
-.icon {font-size:24px;}
+body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
+.header { background: #ff1493; padding: 15px; color: white; text-align: center; font-size: 22px; font-weight: bold; position: fixed; top: 0; width: 100%; }
+.container { padding: 80px 15px; }
+.request-card { background: white; margin-bottom: 15px; padding: 15px; border-radius: 15px; box-shadow: 0 0 10px #ffc0d9; display: flex; align-items: center; }
+.request-card img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 3px solid #ff1493; margin-right: 15px; }
+.name { font-weight: bold; color: #ff1493; }
+.btn { background: #ff1493; color: white; border: none; border-radius: 8px; margin-top: 5px; padding: 7px 12px; cursor: pointer; }
+.btn-disabled { background: gray; }
 </style>
 </head>
-
 <body>
-<div class="topbar">
-<span onclick="closeMenu()">✖</span>
-Chat
-</div>
 
-<div id="menu" style="width:0;height:100%;position:fixed;top:0;left:0;background:#fff;overflow-x:hidden;transition:0.3s;padding-top:60px;box-shadow:3px 0 10px rgba(0,0,0,0.2);z-index:20;">
-<a class="closebtn" onclick="closeMenu()">✖</a>
-<a href="index.html">Dashboard</a>
-<a href="profile.html">My Profile</a>
-<a href="wallet.html">Wallet</a>
-<a href="help.html">Help & Support</a>
-</div>
-
-<div class="list" id="requestList"></div>
-
-<div class="bottom-nav">
-<div onclick="location.href='index.html'">
-<span class="icon">🏠</span>
-Home
-</div>
-<div onclick="location.href='chat.html'">
-<span class="icon">💬</span>
-Chat
-</div>
-<div onclick="location.href='profile.html'">
-<span class="icon">👤</span>
-Profile
-</div>
-</div>
+<div class="header">Chat Requests</div>
+<div class="container" id="requestList">Loading...</div>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
-  authDomain: "sathimere-415fa.firebaseapp.com",
-  projectId: "sathimere-415fa",
-  storageBucket: "sathimere-415fa.firebasestorage.app",
-  messagingSenderId: "290492321074",
-  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
-
-let CURRENT = null;
-
-/* MENU */
-function closeMenu(){ menu.style.width="0"; }
-
-/* INIT */
-auth.onAuthStateChanged(async u=>{
-    if(!u){ location.href="login.html"; return; }
-    CURRENT = u;
-    loadChatRequests();
+auth.onAuthStateChanged(async (user) => {
+if(!user) return window.location = "login.html";
+loadRequests(user.uid);
 });
 
-/* LOAD CHAT REQUESTS */
-async function loadChatRequests(){
-    const list = document.getElementById('requestList');
-    list.innerHTML = "";
+async function loadRequests(myId){
+const list = document.getElementById("requestList");
+list.innerHTML = "Loading...";
 
-    // Incoming pending requests
-    const incoming = await db.collection("requests")
-        .where("to","==",CURRENT.uid)
-        .where("status","==","pending").get();
+// Get my requests where I am the "to" user
+db.collection("chatRequests")
+.where("to","==",myId)
+.onSnapshot(async snap => {
+list.innerHTML = "";
+snap.forEach(async doc => {
+    let data = doc.data();
+    let fromId = data.from;
+    let requestId = doc.id;
 
-    for(let d of incoming.docs){
-        const r = d.data();
-        const userDoc = await db.collection("users").doc(r.from).get();
-        const u = userDoc.data();
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-            <img src="${u.photo||'https://via.placeholder.com/150'}">
-            <div class="info">
-                <b>${u.name} ${u.surname}</b> wants to chat
-            </div>
-            <button class="btn accept" onclick="acceptRequest('${d.id}','${r.from}')">Open Chat</button>
-            <button class="btn reject" onclick="rejectRequest('${d.id}')">Reject</button>
-        `;
-        list.appendChild(card);
-    }
+    let userDoc = await db.collection("users").doc(fromId).get();
+    let u = userDoc.data();
 
-    // Accepted requests (user can open chat)
-    const accepted = await db.collection("requests")
-        .where("status","==","accepted")
-        .where("to","==",CURRENT.uid).get();
+    let card = document.createElement("div");
+    card.className = "request-card";
 
-    for(let d of accepted.docs){
-        const r = d.data();
-        const userDoc = await db.collection("users").doc(r.from).get();
-        const u = userDoc.data();
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-            <img src="${u.photo||'https://via.placeholder.com/150'}">
-            <div class="info">
-                <b>${u.name} ${u.surname}</b> Chat
-            </div>
-            <button class="btn accept" onclick="openChat('${CURRENT.uid}','${r.from}')">Open Chat</button>
-        `;
-        list.appendChild(card);
-    }
+    card.innerHTML = `
+        <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
+        <div style="flex:1">
+            <div class="name">${u.name} ${u.surname}</div>
+            <div style="color:gray">${u.gender}</div>
+            <button id="accept_${requestId}" class="btn">Accept</button>
+            <button id="reject_${requestId}" class="btn">Reject</button>
+        </div>
+    `;
 
-    // Requests sent by CURRENT user and accepted
-    const sentAccepted = await db.collection("requests")
-        .where("from","==",CURRENT.uid)
-        .where("status","==","accepted").get();
+    list.appendChild(card);
 
-    for(let d of sentAccepted.docs){
-        const r = d.data();
-        const userDoc = await db.collection("users").doc(r.to).get();
-        const u = userDoc.data();
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-            <img src="${u.photo||'https://via.placeholder.com/150'}">
-            <div class="info">
-                <b>${u.name} ${u.surname}</b> Chat
-            </div>
-            <button class="btn accept" onclick="openChat('${CURRENT.uid}','${r.to}')">Open Chat</button>
-        `;
-        list.appendChild(card);
+    document.getElementById("accept_" + requestId).onclick = () => acceptRequest(myId, requestId, u.gender);
+    document.getElementById("reject_" + requestId).onclick = () => rejectRequest(requestId);
+});
+});
+}
+
+async function acceptRequest(myId, requestId, fromGender){
+let req = await db.collection("chatRequests").doc(requestId).get();
+if(!req.exists) return;
+
+let fromId = req.data().from;
+let paidBy = req.data().paidBy || "Male";
+
+// Male deduct logic
+if(paidBy === "Male" && fromGender === "Female"){
+    let wallet = await db.collection("wallet").doc(myId).get();
+    let balance = wallet.exists ? wallet.data().balance : 0;
+    if(balance >= 10){
+        await db.collection("wallet").doc(myId).update({balance: balance - 10});
+        await db.collection("history").add({uid: myId, amount: -10, type: "Chat Request Accepted", time: new Date()});
+    } else {
+        alert("Insufficient balance to accept this request!");
+        return;
     }
 }
 
-/* ACCEPT REQUEST → Open chat */
-async function acceptRequest(id, other){
-    await db.collection("requests").doc(id).update({status:"accepted"});
-    const chatID = CURRENT.uid < other ? CURRENT.uid+"_"+other : other+"_"+CURRENT.uid;
-    await db.collection("chats").doc(chatID).set({users:[CURRENT.uid,other],lastMsg:"",time:Date.now()});
-    loadChatRequests();
+// Update request status
+await db.collection("chatRequests").doc(requestId).update({status: "accepted"});
+alert("Request accepted!");
 }
 
-/* REJECT REQUEST → Delete */
-async function rejectRequest(id){
-    await db.collection("requests").doc(id).delete();
-    loadChatRequests();
-}
-
-/* OPEN CHAT */
-function openChat(uid1, uid2){
-    const chatID = uid1 < uid2 ? uid1+"_"+uid2 : uid2+"_"+uid1;
-    location.href = "chat-room.html?id="+chatID;
+async function rejectRequest(requestId){
+await db.collection("chatRequests").doc(requestId).update({status: "rejected"});
+alert("Request rejected!");
 }
 </script>
 </body>
