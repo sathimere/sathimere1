@@ -1,88 +1,171 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Sathi Mere - Home</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SathiMere - Match</title>
 
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-  <style>
-    body { font-family: Arial; padding-bottom: 80px; }
-
-    .header {
-      text-align: center;
-      padding: 15px;
-      font-size: 22px;
-      font-weight: bold;
-      background: #f3f3f3;
-      border-bottom: 1px solid #ddd;
+<style>
+    body {
+        margin:0;
+        font-family: Arial;
+        background:#fff;
+        color:#333;
     }
 
-    .profile-card {
-      padding: 15px;
-      margin: 10px;
-      border: 1px solid #ddd;
-      border-radius: 12px;
-      background: #fff;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    /* Top bar */
+    .topbar {
+        height:55px;
+        background:#ff4fa5;
+        color:#fff;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        padding:0 15px;
+        font-size:20px;
+        position:fixed;
+        width:100%;
+        top:0;
+        z-index:10;
     }
 
-    .nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: white;
-      padding: 10px;
-      display: flex;
-      justify-content: space-around;
-      border-top: 1px solid #ccc;
+    /* Sidebar menu */
+    #menu {
+        width:0;
+        height:100%;
+        position:fixed;
+        top:0;
+        left:0;
+        background:#fff;
+        overflow-x:hidden;
+        transition:0.3s;
+        padding-top:60px;
+        box-shadow:3px 0 10px rgba(0,0,0,0.2);
+        z-index:20;
+    }
+    #menu a {
+        padding:12px 20px;
+        display:block;
+        font-size:18px;
+        color:#333;
+        text-decoration:none;
+    }
+    #menu a:hover { background:#ffe0f1; }
+
+    .closebtn {
+        position:absolute;
+        top:10px;
+        right:10px;
+        font-size:30px;
     }
 
-    .nav button {
-      padding: 10px 12px;
-      border: none;
-      background: #eee;
-      border-radius: 6px;
-      font-size: 14px;
+    /* Match card */
+    .card {
+        width:90%;
+        margin:90px auto 0;
+        background:#fff;
+        border-radius:15px;
+        box-shadow:0 4px 15px rgba(0,0,0,0.1);
+        overflow:hidden;
+        text-align:center;
     }
 
-    #userInfo {
-      background: #eef6ff;
-      padding: 10px;
-      margin: 12px;
-      border-radius: 8px;
+    .card img {
+        width:100%;
+        height:280px;
+        object-fit:cover;
     }
-  </style>
+
+    .details {
+        padding:15px;
+        font-size:18px;
+    }
+
+    /* Buttons */
+    .btn {
+        background:#ff4fa5;
+        color:#fff;
+        padding:12px 20px;
+        border-radius:10px;
+        display:inline-block;
+        margin:10px;
+        text-decoration:none;
+        font-weight:bold;
+    }
+
+    /* Bottom navigation */
+    .bottom-nav {
+        position:fixed;
+        bottom:0;
+        width:100%;
+        background:#fff;
+        border-top:1px solid #ddd;
+        display:flex;
+        justify-content:space-around;
+        padding:10px 0;
+    }
+    .bottom-nav div {
+        text-align:center;
+        font-size:16px;
+        color:#ff4fa5;
+        font-weight:bold;
+    }
+</style>
+
 </head>
-
 <body>
 
-<div class="header">Sathi Mere – Matches</div>
-
-<div id="userInfo"></div>
-
-<h3 style="margin-left:12px;">Profiles</h3>
-
-<div id="profileList">Loading...</div>
-
-<!-- Bottom Navigation -->
-<div class="nav">
-  <button onclick="window.location='profile.html'">Profile</button>
-  <button onclick="alert('Wallet Coming Soon')">Wallet</button>
-  <button onclick="alert('Chat Coming Soon')">Chat</button>
-  <button onclick="alert('Match Coming Soon')">Match</button>
-  <button onclick="logout()">Logout</button>
+<!-- Top Bar -->
+<div class="topbar">
+    <span onclick="openMenu()">☰</span>
+    SathiMere
+    <span onclick="openChat()">💬</span>
 </div>
 
+<!-- Sidebar Menu -->
+<div id="menu">
+    <a class="closebtn" onclick="closeMenu()">✖</a>
+    <a href="profile.html">My Profile</a>
+    <a href="wallet.html">Wallet</a>
+    <a href="terms.html">Terms & Conditions</a>
+    <a href="privacy.html">Privacy Policy</a>
+    <a href="help.html">Help & Support</a>
+    <a onclick="logout()">Logout</a>
+</div>
+
+<!-- Match Card -->
+<div id="matchCard" class="card" style="display:none;">
+    <img id="pPhoto">
+    <div class="details">
+        <div id="pName"></div>
+        <div id="pAge"></div>
+        <div id="pBio"></div>
+    </div>
+
+    <a class="btn" onclick="viewProfile()">View Profile</a>
+    <a class="btn" onclick="startChat()">Chat</a>
+    <a class="btn" onclick="nextProfile()">Next</a>
+</div>
+
+<div style="margin-top:180px;text-align:center;" id="loadingTxt">Loading matches...</div>
+
+<!-- Bottom Navigation -->
+<div class="bottom-nav">
+    <div onclick="location.href='profile.html'">Profile</div>
+    <div onclick="location.href='index.html'">Match</div>
+    <div onclick="openChat()">Chat</div>
+</div>
 
 <script>
-// ---------------------- FIREBASE CONFIG ----------------------
+/* ---------------- Firebase Init ---------------- */
 const firebaseConfig = {
   apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
   authDomain: "sathimere-415fa.firebaseapp.com",
+  databaseURL: "https://sathimere-415fa-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "sathimere-415fa",
   storageBucket: "sathimere-415fa.firebasestorage.app",
   messagingSenderId: "290492321074",
@@ -90,64 +173,90 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
 const db = firebase.firestore();
 
-let currentUid = "";
+/* UI Menu */
+function openMenu(){ document.getElementById("menu").style.width="250px"; }
+function closeMenu(){ document.getElementById("menu").style.width="0"; }
 
+/* Chat */
+function openChat(){ location.href="chat.html"; }
 
-// ---------- CHECK LOGIN STATUS ----------
-auth.onAuthStateChanged(async user => {
-  if (!user) {
-    window.location = "login.html";
-    return;
-  }
+/* Logout */
+function logout(){
+    firebase.auth().signOut().then(()=>{
+        location.href="login.html";
+    });
+}
 
-  currentUid = user.uid;
-  loadUserInfo(user);
-  loadProfiles();
+let currentUser = null;
+let profiles = [];
+let currentIndex = 0;
+let currentProfileId = null;
+
+/* Load after login */
+firebase.auth().onAuthStateChanged(async(user)=>{
+    if(!user){ location.href="login.html"; return; }
+
+    currentUser = user;
+    loadMatches();
 });
 
+/* Match Loader */
+async function loadMatches(){
+    let myData = await db.collection("profiles").doc(currentUser.uid).get();
+    if(!myData.exists){ return; }
 
-// ---------- SHOW LOGGED-IN USER INFO ----------
-function loadUserInfo(user) {
-  let box = document.getElementById("userInfo");
-  box.innerHTML = `
-     <b>Logged in as:</b><br>
-     ${user.email}<br>
-     <span style="font-size:12px;color:#666;">UID: ${user.uid}</span>
-  `;
+    let myGender = myData.data().gender;
+
+    let opposite = myGender === "male" ? "female" : "male";
+
+    let q = await db.collection("profiles").where("gender","==",opposite).get();
+
+    profiles = [];
+    q.forEach(doc=>{
+        if(doc.id !== currentUser.uid){
+            profiles.push({ id: doc.id, ...doc.data() });
+        }
+    });
+
+    if(profiles.length === 0){
+        document.getElementById("loadingTxt").innerText = "No matches found.";
+        return;
+    }
+
+    document.getElementById("loadingTxt").style.display="none";
+    document.getElementById("matchCard").style.display="block";
+    showProfile();
 }
 
+/* Show Profile on Card */
+function showProfile(){
+    let p = profiles[currentIndex];
 
-// ---------- LOAD ALL PROFILES FROM FIRESTORE ----------
-async function loadProfiles() {
-  let list = document.getElementById("profileList");
-  list.innerHTML = "Loading profiles...";
+    currentProfileId = p.id;
 
-  const snap = await db.collection("users").get();
-
-  list.innerHTML = "";
-
-  snap.forEach(doc => {
-    let p = doc.data();
-
-    list.innerHTML += `
-      <div class="profile-card">
-        <h3>${p.name || "No Name"}</h3>
-        <p>Age: ${p.age || "N/A"}</p>
-        <p>Gender: ${p.gender || "N/A"}</p>
-      </div>
-    `;
-  });
+    document.getElementById("pPhoto").src = p.photo || "https://via.placeholder.com/300x300?text=No+Photo";
+    document.getElementById("pName").innerText = p.name;
+    document.getElementById("pAge").innerText = "Age: " + p.age;
+    document.getElementById("pBio").innerText = p.bio || "";
 }
 
+/* Next Profile */
+function nextProfile(){
+    currentIndex++;
+    if(currentIndex >= profiles.length) currentIndex = 0;
+    showProfile();
+}
 
-// ---------- LOGOUT ----------
-function logout() {
-  auth.signOut().then(() => {
-    window.location = "login.html";
-  });
+/* View Profile Page */
+function viewProfile(){
+    location.href = "profile-view.html?id=" + currentProfileId;
+}
+
+/* Chat */
+function startChat(){
+    location.href = "chat.html?uid=" + currentProfileId;
 }
 
 </script>
