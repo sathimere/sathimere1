@@ -10,6 +10,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
+<script src="firebase.js"></script>
+
 <style>
 body{
   margin:0;
@@ -25,7 +27,6 @@ body{
   font-size:23px;
   font-weight:bold;
   border-radius:0 0 25px 25px;
-  letter-spacing:1px;
 }
 .container{
   width:92%;
@@ -67,7 +68,6 @@ input, select, textarea{
   border:1px solid #ccc;
   border-radius:8px;
   margin-top:7px;
-  background:#fff;
   font-size:14px;
 }
 label{
@@ -75,7 +75,6 @@ label{
   color:#222;
   font-weight:600;
 }
-
 .row-2{
   display:flex;
   gap:10px;
@@ -83,7 +82,6 @@ label{
 .row-2 > div{
   flex:1;
 }
-
 .save-btn{
   background:#ff4da6;
   color:white;
@@ -169,7 +167,6 @@ label{
       <option value="">Select Gender</option>
       <option value="Male">Male</option>
       <option value="Female">Female</option>
-      <option value="Other">Other</option>
     </select>
 
     <label>Choice (Partner Preference)</label>
@@ -183,27 +180,18 @@ label{
 </div>
 
 <script>
-// Firebase config (same as your original)
-const firebaseConfig = {
-  apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
-  authDomain: "sathimere-415fa.firebaseapp.com",
-  projectId: "sathimere-415fa",
-  storageBucket: "sathimere-415fa.firebasestorage.app",
-  messagingSenderId: "290492321074",
-  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
-
-auth.signInAnonymously();
-
 const imgbbKey = "5d029a90e51dd6f7960ae7c3a7ac4200";
 
-// LOAD DATA
-auth.onAuthStateChanged(async (user)=>{
-    let uid = user.uid;
+/* 🔄 LOAD USER DATA */
+auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+        window.location = "login.html";
+        return;
+    }
+    loadData(user.uid);
+});
+
+async function loadData(uid){
     let doc = await db.collection("users").doc(uid).get();
 
     if(doc.exists){
@@ -231,62 +219,52 @@ auth.onAuthStateChanged(async (user)=>{
             document.getElementById("profileImg").src = d.photo;
         }
     }
-});
+}
 
-// SAVE FUNCTION
+/* 💾 SAVE PROFILE */
 async function saveProfile(){
-    let user = auth.currentUser;
-    let uid = user.uid;
+    let uid = auth.currentUser.uid;
 
-    let surname = document.getElementById("surname").value;
-    let name = document.getElementById("name").value;
-    let father = document.getElementById("father").value;
-    let mother = document.getElementById("mother").value;
-    let age = document.getElementById("age").value;
-    let dob = document.getElementById("dob").value;
-    let email = document.getElementById("email").value;
-    let mobile = document.getElementById("mobile").value;
-    let mobilePrivacy = document.getElementById("mobilePrivacy").value;
-    let city = document.getElementById("city").value;
-    let state = document.getElementById("state").value;
-    let district = document.getElementById("district").value;
-    let caste = document.getElementById("caste").value;
-    let address = document.getElementById("address").value;
-    let gender = document.getElementById("gender").value;
-    let choice = document.getElementById("choice").value;
-    let interest = document.getElementById("interest").value;
-
-    let fileInput = document.getElementById("photo");
+    let file = document.getElementById("photo").files[0];
     let photoURL = document.getElementById("profileImg").src;
 
-    if(fileInput.files.length > 0){
-        let file = fileInput.files[0];
+    if(file){
         let base64 = await toBase64(file);
-
         let fd = new FormData();
         fd.append("key", imgbbKey);
         fd.append("image", base64.split(",")[1]);
 
-        let res = await fetch("https://api.imgbb.com/1/upload", {
-            method: "POST",
-            body: fd
-        });
-
+        let res = await fetch("https://api.imgbb.com/1/upload", { method: "POST", body: fd });
         let json = await res.json();
         photoURL = json.data.url;
     }
 
     await db.collection("users").doc(uid).set({
-        surname, name, father, mother, age, dob,
-        email, mobile, mobilePrivacy,
-        city, state, district, caste, address,
-        gender, choice, interest,
-        photo: photoURL
-    });
+        surname: surname.value,
+        name: name.value,
+        father: father.value,
+        mother: mother.value,
+        age: age.value,
+        dob: dob.value,
+        email: email.value,
+        mobile: mobile.value,
+        mobilePrivacy: mobilePrivacy.value,
+        city: city.value,
+        state: state.value,
+        district: district.value,
+        caste: caste.value,
+        address: address.value,
+        gender: gender.value,
+        choice: choice.value,
+        interest: interest.value,
+        photo: photoURL,
+        updatedAt: Date.now()
+    }, { merge: true });
 
     alert("Profile Updated Successfully!");
 }
 
+/* IMAGE → BASE64 */
 function toBase64(file){
     return new Promise((resolve,reject)=>{
         let r = new FileReader();
