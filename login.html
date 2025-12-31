@@ -8,58 +8,27 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
   <script src="firebase.js"></script>
 
   <style>
-    body {
-      font-family: Arial;
-      background: #ffe4f0;
-      padding: 20px;
-    }
-
+    body { font-family: Arial; background:#ffe4f0; padding:20px; }
     .box {
-      max-width: 360px;
-      margin: auto;
-      padding: 25px;
-      background: white;
-      border-radius: 15px;
-      box-shadow: 0 0 10px #ff9ac7;
+      max-width:360px; margin:auto; padding:25px;
+      background:white; border-radius:15px;
+      box-shadow:0 0 10px #ff9ac7;
     }
-
     input, select {
-      width: 100%;
-      padding: 12px;
-      margin: 8px 0;
-      border: 1px solid #ccc;
-      border-radius: 8px;
+      width:100%; padding:12px; margin:8px 0;
+      border:1px solid #ccc; border-radius:8px;
     }
-
     button {
-      width: 100%;
-      padding: 12px;
-      background: #ff1493;
-      color: white;
-      border: none;
-      margin-top: 10px;
-      font-size: 16px;
-      border-radius: 8px;
-      cursor: pointer;
+      width:100%; padding:12px; background:#ff1493; color:white;
+      border:none; margin-top:10px; font-size:16px;
+      border-radius:8px; cursor:pointer;
     }
-
-    .link {
-      color: #ff1493;
-      text-align: center;
-      cursor: pointer;
-      margin-top: 10px;
-      display: block;
-    }
-
-    h2 {
-      text-align: center;
-      color: #ff1493;
-    }
+    .link { color:#ff1493; text-align:center; cursor:pointer; margin-top:10px; display:block;}
+    h2 { text-align:center; color:#ff1493; }
   </style>
 </head>
 
@@ -69,9 +38,8 @@
 
 <!-- LOGIN -->
 <div class="box" id="loginBox">
-
-  <input type="email" id="email" placeholder="Email">
-  <input type="password" id="password" placeholder="Password">
+  <input type="email" id="emailInput" placeholder="Email">
+  <input type="password" id="passwordInput" placeholder="Password">
 
   <button onclick="loginEmail()">Login</button>
 
@@ -79,20 +47,18 @@
   <span class="link" onclick="resetPassword()">Forgot Password?</span>
 
   <hr>
-
-  <button onclick="loginGoogle()">Login with Google</button>
+  <button onclick="googleStart()">Login with Google</button>
 </div>
 
 
 <!-- SIGNUP -->
 <div class="box" id="signupBox" style="display:none;">
-
   <h3 style="text-align:center;color:#ff1493;">Create Account</h3>
 
-  <input type="text" id="name" placeholder="First Name">
-  <input type="text" id="surname" placeholder="Surname">
+  <input type="text" id="nameInput" placeholder="First Name">
+  <input type="text" id="surnameInput" placeholder="Surname">
 
-  <select id="gender">
+  <select id="genderInput">
     <option value="">Select Gender</option>
     <option value="Male">Male</option>
     <option value="Female">Female</option>
@@ -103,64 +69,50 @@
 
   <button onclick="createAccount()">Create Account</button>
   <span class="link" onclick="hideSignup()">Back to Login</span>
-
 </div>
+
+
+<!-- GOOGLE EXTRA FORM -->
+<div class="box" id="googleForm" style="display:none;">
+  <h3 style="text-align:center;color:#ff1493;">Complete Your Profile</h3>
+
+  <input type="text" id="gName" placeholder="First Name">
+  <input type="text" id="gSurname" placeholder="Surname">
+
+  <select id="gGender">
+    <option value="">Select Gender</option>
+    <option value="Male">Male</option>
+    <option value="Female">Female</option>
+  </select>
+
+  <button onclick="googleFinish()">Continue</button>
+</div>
+
 
 <script>
 
-/* ---------------- EMAIL LOGIN ---------------- */
+// LOGIN
 function loginEmail() {
-  let email = email.value;
-  let pass = password.value;
+  let email = document.getElementById("emailInput").value;
+  let pass = document.getElementById("passwordInput").value;
 
   auth.signInWithEmailAndPassword(email, pass)
     .then(() => {
-
       if (email === "sathimere.admin@gmail.com") {
         window.location = "admin.html";
       } else {
         window.location = "index.html";
       }
-
     })
     .catch(err => alert(err.message));
 }
 
 
-/* ---------------- GOOGLE LOGIN ---------------- */
-function loginGoogle() {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider)
-    .then(async (res) => {
-      
-      let user = res.user;
-
-      let docRef = db.collection("users").doc(user.uid);
-      let doc = await docRef.get();
-
-      if (!doc.exists) {
-        await docRef.set({
-          name: user.displayName || "",
-          surname: "",
-          gender: "",
-          email: user.email,
-          wallet: 0,
-          createdAt: Date.now()
-        });
-      }
-
-      window.location = "index.html";
-    })
-    .catch(err => alert(err.message));
-}
-
-
-/* ---------------- CREATE ACCOUNT ---------------- */
-async function createAccount() {
-
-  let nm = name.value;
-  let sn = surname.value;
-  let g = gender.value;
+// SIGNUP
+function createAccount() {
+  let nm = nameInput.value;
+  let sn = surnameInput.value;
+  let g = genderInput.value;
   let em = signupEmail.value;
   let pw = signupPass.value;
 
@@ -171,10 +123,7 @@ async function createAccount() {
 
   auth.createUserWithEmailAndPassword(em, pw)
     .then(async (res) => {
-      
-      let uid = res.user.uid;
-
-      await db.collection("users").doc(uid).set({
+      await db.collection("users").doc(res.user.uid).set({
         name: nm,
         surname: sn,
         gender: g,
@@ -182,38 +131,78 @@ async function createAccount() {
         wallet: 0,
         createdAt: Date.now()
       });
-
-      alert("Account created!");
       window.location = "index.html";
     })
     .catch(err => alert(err.message));
 }
 
 
-/* ---------------- RESET PASSWORD ---------------- */
+// RESET PASSWORD
 function resetPassword() {
   let em = prompt("Enter your email:");
   if (!em) return;
-
   auth.sendPasswordResetEmail(em)
     .then(() => alert("Reset link sent"))
     .catch(err => alert(err.message));
 }
 
 
-/* SWITCH TO SIGNUP */
+// SHOW SIGNUP
 function showSignup() {
   signupBox.style.display = "block";
   loginBox.style.display = "none";
 }
 
-/* BACK TO LOGIN */
+// HIDE SIGNUP
 function hideSignup() {
   signupBox.style.display = "none";
   loginBox.style.display = "block";
 }
 
+
+
+// GOOGLE LOGIN FLOW
+let googleUserTemp = null;
+
+function googleStart() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider)
+    .then((res) => {
+      googleUserTemp = res.user;
+
+      loginBox.style.display = "none";
+      signupBox.style.display = "none";
+      googleForm.style.display = "block";
+
+      gName.value = googleUserTemp.displayName || "";
+    })
+    .catch(err => alert(err.message));
+}
+
+
+async function googleFinish() {
+  let nm = gName.value;
+  let sn = gSurname.value;
+  let g = gGender.value;
+
+  if (!nm || !sn || !g) {
+    alert("All fields required!");
+    return;
+  }
+
+  await db.collection("users").doc(googleUserTemp.uid).set({
+    name: nm,
+    surname: sn,
+    gender: g,
+    email: googleUserTemp.email,
+    wallet: 0,
+    createdAt: Date.now()
+  });
+
+  window.location = "index.html";
+}
+
 </script>
 
 </body>
-  </html>
+</html>
