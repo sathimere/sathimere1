@@ -11,7 +11,9 @@
 
 <style>
 body{margin:0;font-family:Arial;background:#fff;color:#333;}
-.topbar{height:55px;background:#ff4fa5;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 15px;font-size:20px;position:fixed;width:100%;top:0;z-index:10;}
+.topbar{height:55px;background:#ff4fa5;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 15px;font-size:20px;position:fixed;width:100%;top:0;z-index:10;}
+.topbar span:first-child{position:absolute;left:15px;}
+.topbar span:last-child{position:absolute;right:15px;}
 
 #menu{width:0;height:100%;position:fixed;top:0;left:0;background:#fff;overflow-x:hidden;transition:0.3s;padding-top:60px;box-shadow:3px 0 10px rgba(0,0,0,0.2);z-index:20;}
 #menu a{padding:12px 20px;display:block;font-size:18px;color:#333;text-decoration:none;}
@@ -57,9 +59,11 @@ Dashboard
 <div class="section-title">Incoming Chat Requests 💬</div>
 <div class="list" id="reqList"></div>
 
-<!-- WHO LIKED ME -->
+<!-- MATCH / WHO LIKED ME LIST (NOW HIDDEN UNTIL BUTTON CLICKED) -->
+<div id="likeSection" style="display:none;">
 <div class="section-title">Who Liked Me 💜</div>
 <div class="list" id="likeList"></div>
+</div>
 
 <!-- ALL PROFILES -->
 <div class="section-title">Profiles</div>
@@ -68,7 +72,7 @@ Dashboard
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
 <div onclick="location.href='profile.html'"><span class="icon">👤</span>Profile</div>
-<div onclick="loadUsers()"><span class="icon">❤️</span>Match</div>
+<div onclick="openLikes()"><span class="icon">❤️</span>Match</div>
 <div onclick="loadRequests()"><span class="icon">💬</span>Chat</div>
 </div>
 
@@ -100,8 +104,13 @@ auth.onAuthStateChanged(async u=>{
     CURRENT=u;
     loadUsers();
     loadRequests();
-    loadLikes();
 });
+
+/* LIKE SECTION OPEN */
+function openLikes(){
+    likeSection.style.display="block";
+    loadLikes();
+}
 
 /* LOAD OPPOSITE PROFILES */
 async function loadUsers(){
@@ -109,7 +118,6 @@ async function loadUsers(){
 
     let me=await db.collection("users").doc(CURRENT.uid).get();
     let myGender=me.data().gender||"Male";
-
     let target = myGender==="Male" ? "Female" : "Male";
 
     let q=await db.collection("users").where("gender","==",target).get();
@@ -209,7 +217,7 @@ async function loadRequests(){
     }
 }
 
-/* ACCEPT REQUEST → CREATE CHAT ROOM */
+/* ACCEPT REQUEST → OPEN CHAT PAGE */
 async function acceptReq(id, other){
     await db.collection("requests").doc(id).update({status:"accepted"});
 
@@ -222,13 +230,12 @@ async function acceptReq(id, other){
         time:Date.now()
     });
 
-    alert("Request Accepted!");
-    loadRequests();
+    location.href = "chat.html?id=" + chatID;  // ⭐ OPEN CHAT DIRECTLY
 }
 
-/* REJECT */
+/* REJECT → REMOVE REQUEST */
 async function rejectReq(id){
-    await db.collection("requests").doc(id).update({status:"rejected"});
+    await db.collection("requests").doc(id).delete(); // ⭐ REMOVE
     loadRequests();
 }
 
@@ -239,4 +246,4 @@ function viewProfile(uid){
 </script>
 
 </body>
-</html>
+  </html>
