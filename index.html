@@ -66,7 +66,7 @@
     /* Match card */
     .card {
         width:90%;
-        margin:90px auto 0;
+        margin:90px auto 80px;
         background:#fff;
         border-radius:15px;
         box-shadow:0 4px 15px rgba(0,0,0,0.1);
@@ -107,13 +107,65 @@
         display:flex;
         justify-content:space-around;
         padding:10px 0;
+        box-shadow:0 -2px 10px rgba(0,0,0,0.1);
     }
     .bottom-nav div {
         text-align:center;
-        font-size:16px;
+        font-size:14px;
         color:#ff4fa5;
         font-weight:bold;
+        display:flex;
+        flex-direction:column;
+        gap:3px;
     }
+
+    /* small icons */
+    .icon {
+        font-size:20px;
+    }
+
+    /* Filter popup */
+    #filterBox {
+        position:fixed;
+        top:0;
+        left:0;
+        width:100%;
+        height:100%;
+        background:rgba(0,0,0,0.4);
+        display:none;
+        justify-content:center;
+        align-items:center;
+        z-index:50;
+    }
+
+    .filter-card {
+        width:85%;
+        background:#fff;
+        padding:20px;
+        border-radius:15px;
+        box-shadow:0 4px 20px rgba(0,0,0,0.2);
+    }
+
+    .filter-card input,
+    .filter-card select {
+        width:100%;
+        padding:10px;
+        margin:10px 0;
+        border-radius:8px;
+        border:1px solid #ccc;
+    }
+
+    .f-btn {
+        width:100%;
+        background:#ff4fa5;
+        padding:12px;
+        border-radius:10px;
+        color:#fff;
+        margin-top:10px;
+        font-weight:bold;
+        text-align:center;
+    }
+
 </style>
 
 </head>
@@ -123,7 +175,7 @@
 <div class="topbar">
     <span onclick="openMenu()">☰</span>
     SathiMere
-    <span onclick="openChat()">💬</span>
+    <span onclick="openFilter()">⚙</span>
 </div>
 
 <!-- Sidebar Menu -->
@@ -137,6 +189,21 @@
     <a onclick="logout()">Logout</a>
 </div>
 
+<!-- FILTER POPUP -->
+<div id="filterBox">
+    <div class="filter-card">
+        <h3>Filter Profiles</h3>
+
+        <input type="number" id="fAge" placeholder="Age (e.g. 18-30)">
+        <input type="text" id="fState" placeholder="State">
+        <input type="text" id="fCaste" placeholder="Caste">
+        <input type="text" id="fChoice" placeholder="Choice">
+
+        <div class="f-btn" onclick="applyFilter()">Apply Filter</div>
+        <div class="f-btn" style="background:#bbb" onclick="closeFilter()">Close</div>
+    </div>
+</div>
+
 <!-- Match Card -->
 <div id="matchCard" class="card" style="display:none;">
     <img id="pPhoto">
@@ -146,6 +213,8 @@
         <div id="pBio"></div>
     </div>
 
+    <!-- NEW MATCH BUTTON -->
+    <a class="btn" onclick="goMatch()">Match</a>
     <a class="btn" onclick="viewProfile()">View Profile</a>
     <a class="btn" onclick="startChat()">Chat</a>
     <a class="btn" onclick="nextProfile()">Next</a>
@@ -155,9 +224,20 @@
 
 <!-- Bottom Navigation -->
 <div class="bottom-nav">
-    <div onclick="location.href='profile.html'">Profile</div>
-    <div onclick="location.href='index.html'">Match</div>
-    <div onclick="openChat()">Chat</div>
+    <div onclick="location.href='profile.html'">
+        <span class="icon">👤</span>
+        Profile
+    </div>
+
+    <div onclick="location.href='index.html'">
+        <span class="icon">❤️</span>
+        Match
+    </div>
+
+    <div onclick="openChat()">
+        <span class="icon">💬</span>
+        Chat
+    </div>
 </div>
 
 <script>
@@ -179,14 +259,31 @@ const db = firebase.firestore();
 function openMenu(){ document.getElementById("menu").style.width="250px"; }
 function closeMenu(){ document.getElementById("menu").style.width="0"; }
 
+/* Filter */
+function openFilter(){ document.getElementById("filterBox").style.display="flex"; }
+function closeFilter(){ document.getElementById("filterBox").style.display="none"; }
+
+let filters = {};
+
+function applyFilter(){
+    filters = {
+        age: document.getElementById("fAge").value,
+        state: document.getElementById("fState").value,
+        caste: document.getElementById("fCaste").value,
+        choice: document.getElementById("fChoice").value
+    };
+    closeFilter();
+    loadMatches();
+}
+
 /* Chat */
-function openChat(){ location.href="chat.html"; }
+function openChat(){
+    location.href="chat.html";
+}
 
 /* Logout */
 function logout(){
-    firebase.auth().signOut().then(()=>{
-        location.href="login.html";
-    });
+    firebase.auth().signOut().then(()=>{ location.href="login.html"; });
 }
 
 let currentUser = null;
@@ -202,21 +299,37 @@ firebase.auth().onAuthStateChanged(async(user)=>{
     loadMatches();
 });
 
-/* Match Loader */
+/* Load matches with filters */
 async function loadMatches(){
     let myData = await db.collection("profiles").doc(currentUser.uid).get();
     if(!myData.exists){ return; }
 
-    let myGender = myData.data().gender;
-
-    let opposite = myGender === "male" ? "female" : "male";
+    let me = myData.data();
+    let opposite = me.gender === "male" ? "female" : "male";
 
     let q = await db.collection("profiles").where("gender","==",opposite).get();
 
     profiles = [];
+
     q.forEach(doc=>{
+        let d = doc.data();
+
+        /* Apply filters */
+        if(filters.state && d.state !== filters.state) return;
+        if(filters.caste && d.caste !== filters.caste) return;
+        if(filters.choice && d.choice !== filters.choice) return;
+
+        if(filters.age){
+            let parts = filters.age.split("-");
+            if(parts.length === 2){
+                let min = parseInt(parts[0]);
+                let max = parseInt(parts[1]);
+                if(d.age < min || d.age > max) return;
+            }
+        }
+
         if(doc.id !== currentUser.uid){
-            profiles.push({ id: doc.id, ...doc.data() });
+            profiles.push({ id: doc.id, ...d });
         }
     });
 
@@ -230,10 +343,8 @@ async function loadMatches(){
     showProfile();
 }
 
-/* Show Profile on Card */
 function showProfile(){
     let p = profiles[currentIndex];
-
     currentProfileId = p.id;
 
     document.getElementById("pPhoto").src = p.photo || "https://via.placeholder.com/300x300?text=No+Photo";
@@ -242,24 +353,26 @@ function showProfile(){
     document.getElementById("pBio").innerText = p.bio || "";
 }
 
-/* Next Profile */
 function nextProfile(){
     currentIndex++;
     if(currentIndex >= profiles.length) currentIndex = 0;
     showProfile();
 }
 
-/* View Profile Page */
 function viewProfile(){
     location.href = "profile-view.html?id=" + currentProfileId;
 }
 
-/* Chat */
 function startChat(){
     location.href = "chat.html?uid=" + currentProfileId;
+}
+
+/* NEW: match button */
+function goMatch(){
+    location.href = "match.html?uid=" + currentProfileId;
 }
 
 </script>
 
 </body>
-</html>
+        </html>
