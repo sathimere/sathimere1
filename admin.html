@@ -1,242 +1,171 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SathiMere Admin Panel</title>
+  <title>Admin Panel - Sathi Mere</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-<style>
-    body {
-        margin:0;
-        background:#111;
-        color:#fff;
-        font-family: Arial;
+  <script src="firebase.js"></script>
+
+  <style>
+    body{
+      font-family: Arial;
+      background:#ffe4f0;
+      padding:15px;
     }
-    .container {
-        width:95%;
-        margin:auto;
-        padding-top:20px;
+
+    .topbar{
+      background:#ff1493;
+      padding:12px;
+      color:white;
+      font-size:20px;
+      text-align:center;
+      border-radius:10px;
+      margin-bottom:15px;
     }
-    .card {
-        background:#1c1c1c;
-        padding:15px;
-        border-radius:10px;
-        margin-bottom:20px;
-        box-shadow:0 0 10px rgba(255,255,255,0.05);
+
+    .search-box{
+      width:100%;
+      padding:12px;
+      border:1px solid #ccc;
+      border-radius:8px;
+      margin-bottom:10px;
     }
-    .btn {
-        background:#ff4fa5;
-        padding:7px 12px;
-        border-radius:8px;
-        color:#fff;
-        text-decoration:none;
-        cursor:pointer;
-        display:inline-block;
-        margin:5px 0;
+
+    .user-list{
+      max-height:70vh;
+      overflow-y:auto;
+      background:white;
+      padding:10px;
+      border-radius:10px;
+      box-shadow:0 0 10px #ff9ac7;
     }
-    table {
-        width:100%;
-        border-collapse:collapse;
-        margin-top:10px;
+
+    .user-box{
+      padding:10px;
+      border-bottom:1px solid #eee;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
     }
-    table tr {
-        background:#222;
-        border-bottom:1px solid #333;
+
+    .wallet-btn{
+      background:#ff1493;
+      color:white;
+      border:none;
+      padding:6px 10px;
+      border-radius:6px;
+      cursor:pointer;
     }
-    table td {
-        padding:10px;
+
+    .help-btn{
+      margin-top:15px;
+      width:100%;
+      padding:12px;
+      background:#ff1493;
+      color:white;
+      border:none;
+      border-radius:8px;
+      font-size:16px;
+      cursor:pointer;
     }
-    input {
-        width:100%;
-        padding:10px;
-        border-radius:8px;
-        border:none;
-        margin-bottom:10px;
-        background:#222;
-        color:#fff;
-    }
-</style>
+  </style>
 </head>
 
 <body>
 
-<div class="container">
+<div class="topbar">Admin Panel</div>
 
-<!-- ADMIN LOGIN -->
-<div id="loginBox" class="card">
-    <h2>Admin Login</h2>
+<input id="search" onkeyup="filterUsers()" class="search-box" placeholder="Search users by name, email...">
 
-    <input id="email" type="email" placeholder="Admin Email">
-    <input id="pass" type="password" placeholder="Password">
-
-    <div class="btn" onclick="adminLogin()">Login</div>
-
-    <p style="color:gray;">Email: <b>sathimere.admin@gmail.com</b><br>Password: <b>Abhi@631625</b></p>
+<div class="user-list" id="userList">
+  Loading users...
 </div>
 
-<!-- DASHBOARD -->
-<div id="dashboard" style="display:none;">
-
-    <div class="card">
-        <h2>Dashboard Analytics</h2>
-        <p>Total Users: <span id="uCount">0</span></p>
-        <p>Pending Profiles: <span id="pCount">0</span></p>
-        <p>Banned Users: <span id="bCount">0</span></p>
-    </div>
-
-    <div class="card">
-        <h2>Users List</h2>
-        <table id="userTable"></table>
-    </div>
-
-    <div class="card">
-        <h2>Message Monitoring</h2>
-        <input id="chatId" placeholder="Enter chatID (user1_user2)">
-        <div class="btn" onclick="loadChat()">Load Chat</div>
-        <div id="chatBox" style="white-space:pre;background:#000;padding:10px;border-radius:10px;"></div>
-    </div>
-
-</div>
-
-</div>
+<button class="help-btn" onclick="goHelp()">Help & Support</button>
 
 <script>
 
-// Firebase Init
-const firebaseConfig = {
-  apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
-  authDomain: "sathimere-415fa.firebaseapp.com",
-  databaseURL: "https://sathimere-415fa-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "sathimere-415fa",
-  storageBucket: "sathimere-415fa.firebasestorage.app",
-  messagingSenderId: "290492321074",
-  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
-};
+auth.onAuthStateChanged(async (user)=>{
+   if(!user){
+     window.location="login.html";
+     return;
+   }
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+   if(user.email !== "sathimere.admin@gmail.com"){
+     alert("Access Denied!");
+     window.location="index.html";
+     return;
+   }
 
-// ADMIN LOGIN FIXED EMAIL & PASS
-function adminLogin(){
-    let email = document.getElementById("email").value;
-    let pass  = document.getElementById("pass").value;
+   loadUsers();
+});
 
-    if(email === "sathimere.admin@gmail.com" && pass === "Abhi@631625"){
-        document.getElementById("loginBox").style.display="none";
-        document.getElementById("dashboard").style.display="block";
-        loadUsers();
-        return;
-    }
-    alert("Invalid admin credentials");
-}
 
-// LOAD ALL USERS REALTIME
+/* ---------------- LOAD USERS ---------------- */
 function loadUsers(){
-    db.collection("profiles").onSnapshot(snap=>{
-        let html = `
-            <tr style='background:#333;'>
-                <td>Name</td>
-                <td>Gender</td>
-                <td>Wallet</td>
-                <td>Status</td>
-                <td>Action</td>
-            </tr>
-        `;
+  db.collection("users").orderBy("createdAt","desc").onSnapshot(res=>{
+    
+    let html = "";
+    res.forEach(doc=>{
+      let u = doc.data();
 
-        let total=0, pending=0, banned=0;
+      html += `
+        <div class="user-box">
+          <div>
+            <b>${u.name} ${u.surname}</b><br>
+            <small>${u.email}</small><br>
+            <small>Wallet: ₹${u.wallet}</small>
+          </div>
 
-        snap.forEach(doc=>{
-            total++;
-
-            let d = doc.data();
-
-            if(!d.profileApproved) pending++;
-            if(d.banned) banned++;
-
-            html += `
-                <tr>
-                    <td>${d.name || "-"}</td>
-                    <td>${d.gender || "-"}</td>
-                    <td>${d.wallet || 0}</td>
-                    <td>
-                        ${d.profileApproved ? "✔ Approved" : "⏳ Pending"}<br>
-                        ${d.banned ? "🚫 Banned" : ""}
-                    </td>
-                    <td>
-                        <div class='btn' onclick="approve('${doc.id}')">Approve</div>
-                        <div class='btn' onclick="ban('${doc.id}', ${d.banned})">
-                            ${d.banned ? "Unban" : "Ban"}
-                        </div>
-                        <div class='btn' onclick="deleteUser('${doc.id}')">Delete</div>
-                        <div class='btn' onclick="wallet('${doc.id}')">Wallet</div>
-                    </td>
-                </tr>
-            `;
-        });
-
-        document.getElementById("userTable").innerHTML = html;
-        document.getElementById("uCount").innerText = total;
-        document.getElementById("pCount").innerText = pending;
-        document.getElementById("bCount").innerText = banned;
+          <button class="wallet-btn" onclick="editWallet('${doc.id}', ${u.wallet})">
+            Edit
+          </button>
+        </div>
+      `;
     });
+
+    document.getElementById("userList").innerHTML = html;
+  });
 }
 
-// APPROVE PROFILE
-function approve(uid){
-    db.collection("profiles").doc(uid).update({
-        profileApproved: true
-    });
+
+/* ---------------- WALLET EDIT ---------------- */
+function editWallet(uid, oldBal){
+  let newBal = prompt("Enter new wallet amount:", oldBal);
+
+  if(newBal === null || newBal === "") return;
+
+  db.collection("users").doc(uid).update({
+    wallet: Number(newBal)
+  })
+  .then(()=> alert("Wallet updated!"))
+  .catch(err=> alert(err.message));
 }
 
-// BAN / UNBAN
-function ban(uid, status){
-    db.collection("profiles").doc(uid).update({
-        banned: !status
-    });
+
+/* ---------------- SEARCH USERS ---------------- */
+function filterUsers(){
+  let filter = search.value.toLowerCase();
+  let users = document.querySelectorAll(".user-box");
+
+  users.forEach(u=>{
+    let text = u.innerText.toLowerCase();
+    u.style.display = text.includes(filter) ? "flex" : "none";
+  });
 }
 
-// DELETE USER
-function deleteUser(uid){
-    if(confirm("Delete this user permanently?"))
-    db.collection("profiles").doc(uid).delete();
-}
 
-// UPDATE WALLET
-function wallet(uid){
-    let amount = prompt("Enter new wallet balance:");
-    if(amount === null) return;
-
-    db.collection("profiles").doc(uid).update({
-        wallet: Number(amount)
-    });
-}
-
-// LOAD CHAT
-function loadChat(){
-    let id = document.getElementById("chatId").value;
-
-    db.collection("messages").doc(id).onSnapshot(doc=>{
-        if(!doc.exists){
-            document.getElementById("chatBox").innerText = "No chat found";
-            return;
-        }
-
-        let msgs = doc.data().messages || [];
-        let text = "";
-
-        msgs.forEach(m=>{
-            text += `${m.sender}: ${m.text}\n`;
-        });
-
-        document.getElementById("chatBox").innerText = text;
-    });
+/* ---------------- HELP REDIRECT ---------------- */
+function goHelp(){
+  window.location = "adminhelp.html";
 }
 
 </script>
 
 </body>
-  </html>
+</html>
