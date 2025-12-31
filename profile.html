@@ -13,32 +13,36 @@
 <style>
 body{
   margin:0;
-  font-family: Arial;
-  background:#f7f7f7;
+  font-family: 'Poppins', Arial;
+  background:#ffeef7;
 }
 .header{
   width:100%;
   background:#ff4da6;
-  padding:22px 0;
+  padding:25px 0;
   text-align:center;
   color:white;
-  font-size:22px;
+  font-size:23px;
   font-weight:bold;
-  border-radius:0 0 20px 20px;
+  border-radius:0 0 25px 25px;
+  letter-spacing:1px;
 }
 .container{
   width:92%;
   margin:auto;
   margin-top:20px;
 }
+.profile-card{
+  text-align:center;
+  margin-top:-60px;
+}
 .profile-pic{
-  width:130px;
-  height:130px;
+  width:140px;
+  height:140px;
   border-radius:50%;
-  border:4px solid white;
-  margin-top:-70px;
+  border:5px solid white;
+  box-shadow:0 0 10px rgba(0,0,0,0.15);
   object-fit:cover;
-  transition:0.2s;
 }
 .change-btn{
   background:#ff4da6;
@@ -52,24 +56,34 @@ body{
 }
 .box{
   background:white;
-  padding:16px;
+  padding:18px;
   margin-top:15px;
   border-radius:12px;
+  box-shadow:0 0 8px rgba(0,0,0,0.08);
 }
 input, select, textarea{
   width:100%;
-  padding:11px;
+  padding:12px;
   border:1px solid #ccc;
   border-radius:8px;
-  margin-top:6px;
-  font-size:15px;
+  margin-top:7px;
+  background:#fff;
+  font-size:14px;
 }
 label{
   font-size:14px;
-  color:#444;
-  margin-top:5px;
-  display:block;
+  color:#222;
+  font-weight:600;
 }
+
+.row-2{
+  display:flex;
+  gap:10px;
+}
+.row-2 > div{
+  flex:1;
+}
+
 .save-btn{
   background:#ff4da6;
   color:white;
@@ -79,6 +93,8 @@ label{
   border-radius:10px;
   margin-top:18px;
   font-size:17px;
+  font-weight:bold;
+  box-shadow:0 3px 10px rgba(255,77,166,0.3);
 }
 </style>
 </head>
@@ -87,9 +103,9 @@ label{
 
 <div class="header">My Profile</div>
 
-<center>
-<img id="profileImg" class="profile-pic" src="https://i.imgur.com/3G0P4tJ.png">
-</center>
+<div class="profile-card">
+  <img id="profileImg" class="profile-pic" src="https://i.imgur.com/3G0P4tJ.png">
+</div>
 
 <div class="container">
 
@@ -98,11 +114,11 @@ label{
 
   <div class="box">
 
-    <label>Name</label>
-    <input id="name" type="text">
-
     <label>Surname</label>
     <input id="surname" type="text">
+
+    <label>Name</label>
+    <input id="name" type="text">
 
     <label>Father's Name</label>
     <input id="father" type="text">
@@ -110,11 +126,16 @@ label{
     <label>Mother's Name</label>
     <input id="mother" type="text">
 
-    <label>Date of Birth</label>
-    <input id="dob" type="date">
-
-    <label>Age</label>
-    <input id="age" type="number">
+    <div class="row-2">
+      <div>
+        <label>Age</label>
+        <input id="age" type="number">
+      </div>
+      <div>
+        <label>Date of Birth</label>
+        <input id="dob" type="date">
+      </div>
+    </div>
 
     <label>Email</label>
     <input id="email" type="text">
@@ -162,9 +183,7 @@ label{
 </div>
 
 <script>
-// --------------------
-//  FIREBASE CONFIG
-// --------------------
+// Firebase config (same as your original)
 const firebaseConfig = {
   apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
   authDomain: "sathimere-415fa.firebaseapp.com",
@@ -180,25 +199,22 @@ const auth = firebase.auth();
 
 auth.signInAnonymously();
 
-// ImgBB Key
 const imgbbKey = "5d029a90e51dd6f7960ae7c3a7ac4200";
 
-// --------------------
 // LOAD DATA
-// --------------------
 auth.onAuthStateChanged(async (user)=>{
     let uid = user.uid;
-
     let doc = await db.collection("users").doc(uid).get();
+
     if(doc.exists){
         let d = doc.data();
 
-        document.getElementById("name").value = d.name || "";
         document.getElementById("surname").value = d.surname || "";
+        document.getElementById("name").value = d.name || "";
         document.getElementById("father").value = d.father || "";
         document.getElementById("mother").value = d.mother || "";
-        document.getElementById("dob").value = d.dob || "";
         document.getElementById("age").value = d.age || "";
+        document.getElementById("dob").value = d.dob || "";
         document.getElementById("email").value = d.email || "";
         document.getElementById("mobile").value = d.mobile || "";
         document.getElementById("mobilePrivacy").value = d.mobilePrivacy || "public";
@@ -217,12 +233,28 @@ auth.onAuthStateChanged(async (user)=>{
     }
 });
 
-// --------------------
-// SAVE DATA
-// --------------------
+// SAVE FUNCTION
 async function saveProfile(){
     let user = auth.currentUser;
     let uid = user.uid;
+
+    let surname = document.getElementById("surname").value;
+    let name = document.getElementById("name").value;
+    let father = document.getElementById("father").value;
+    let mother = document.getElementById("mother").value;
+    let age = document.getElementById("age").value;
+    let dob = document.getElementById("dob").value;
+    let email = document.getElementById("email").value;
+    let mobile = document.getElementById("mobile").value;
+    let mobilePrivacy = document.getElementById("mobilePrivacy").value;
+    let city = document.getElementById("city").value;
+    let state = document.getElementById("state").value;
+    let district = document.getElementById("district").value;
+    let caste = document.getElementById("caste").value;
+    let address = document.getElementById("address").value;
+    let gender = document.getElementById("gender").value;
+    let choice = document.getElementById("choice").value;
+    let interest = document.getElementById("interest").value;
 
     let fileInput = document.getElementById("photo");
     let photoURL = document.getElementById("profileImg").src;
@@ -245,27 +277,14 @@ async function saveProfile(){
     }
 
     await db.collection("users").doc(uid).set({
-        name: name.value,
-        surname: surname.value,
-        father: father.value,
-        mother: mother.value,
-        dob: dob.value,
-        age: age.value,
-        email: email.value,
-        mobile: mobile.value,
-        mobilePrivacy: mobilePrivacy.value,
-        city: city.value,
-        state: state.value,
-        district: district.value,
-        caste: caste.value,
-        address: address.value,
-        gender: gender.value,
-        choice: choice.value,
-        interest: interest.value,
+        surname, name, father, mother, age, dob,
+        email, mobile, mobilePrivacy,
+        city, state, district, caste, address,
+        gender, choice, interest,
         photo: photoURL
     });
 
-    alert("Profile updated!");
+    alert("Profile Updated Successfully!");
 }
 
 function toBase64(file){
@@ -279,4 +298,4 @@ function toBase64(file){
 </script>
 
 </body>
-</html>
+  </html>
