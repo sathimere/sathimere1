@@ -12,25 +12,23 @@
 <style>
 body {margin:0;font-family:Arial,sans-serif;background:#f2f2f2;}
 .topbar {height:55px;background:#ff4fa5;color:#fff;display:flex;align-items:center;justify-content:center;position:fixed;width:100%;top:0;z-index:10;font-size:20px;}
-.topbar span:first-child {position:absolute;left:15px;cursor:pointer;}
-.topbar span:last-child {position:absolute;right:15px;cursor:pointer;}
+.topbar span:first-child {position:absolute;left:15px;cursor:pointer;font-size:22px;}
 .list {padding:10px;margin-top:65px;margin-bottom:80px;}
 .card {background:#fff;border-radius:15px;box-shadow:0 4px 12px rgba(0,0,0,0.1);margin-bottom:10px;overflow:hidden;display:flex;align-items:center;padding:10px;}
 .card img {width:60px;height:60px;border-radius:50%;object-fit:cover;margin-right:10px;}
-.info {flex:1;}
-.btn {padding:6px 12px;border:none;border-radius:8px;margin-left:5px;cursor:pointer;font-size:14px;}
-.accept {background:#28a745;color:#fff;}
-.reject {background:#d9534f;color:#fff;}
-.bottom-nav {position:fixed;bottom:0;width:100%;background:#fff;border-top:1px solid #ddd;display:flex;justify-content:space-around;padding:8px 0;box-shadow:0 -3px 10px rgba(0,0,0,0.1);}
-.bottom-nav div {text-align:center;color:#ff1493;font-weight:bold;display:flex;flex-direction:column;gap:3px;cursor:pointer;}
+.info {flex:1;font-size:15px;color:#333;}
+.btn {padding:6px 12px;border:none;border-radius:8px;margin-left:5px;cursor:pointer;font-size:14px;font-weight:bold;}
+.accept {background:#ff1493;color:#fff;}
+.bottom-nav {position:fixed;bottom:0;width:100%;background:#fff;border-top:1px solid #ddd;display:flex;justify-content:space-around;padding:10px 0;box-shadow:0 -3px 10px rgba(0,0,0,0.1);}
+.bottom-nav div {text-align:center;color:#ff1493;font-weight:bold;display:flex;flex-direction:column;gap:3px;cursor:pointer;font-size:13px;}
 .icon {font-size:24px;}
 </style>
 </head>
 
 <body>
 <div class="topbar">
-<span onclick="openMenu()">☰</span>Chat
-<span onclick="logout()">⏻</span>
+<span onclick="closeMenu()">✖</span>
+Chat
 </div>
 
 <div id="menu" style="width:0;height:100%;position:fixed;top:0;left:0;background:#fff;overflow-x:hidden;transition:0.3s;padding-top:60px;box-shadow:3px 0 10px rgba(0,0,0,0.2);z-index:20;">
@@ -39,7 +37,6 @@ body {margin:0;font-family:Arial,sans-serif;background:#f2f2f2;}
 <a href="profile.html">My Profile</a>
 <a href="wallet.html">Wallet</a>
 <a href="help.html">Help & Support</a>
-<a onclick="logout()">Logout</a>
 </div>
 
 <div class="list" id="requestList"></div>
@@ -75,9 +72,7 @@ const auth = firebase.auth();
 let CURRENT = null;
 
 /* MENU */
-function openMenu(){ menu.style.width="250px"; }
 function closeMenu(){ menu.style.width="0"; }
-function logout(){ auth.signOut().then(()=>location.href="login.html"); }
 
 /* INIT */
 auth.onAuthStateChanged(async u=>{
@@ -86,13 +81,13 @@ auth.onAuthStateChanged(async u=>{
     loadChatRequests();
 });
 
-/* LOAD CHAT REQUESTS (INCOMING + SENT ACCEPTED) */
+/* LOAD CHAT REQUESTS (INCOMING + ACCEPTED) */
 async function loadChatRequests(){
     const list = document.getElementById('requestList');
     list.innerHTML = "";
 
     // Incoming requests
-    const incoming = await db.collection("requests").where("to","==",CURRENT.uid).get();
+    const incoming = await db.collection("requests").where("to","==",CURRENT.uid).where("status","==","pending").get();
     for(let d of incoming.docs){
         const r = d.data();
         const userDoc = await db.collection("users").doc(r.from).get();
@@ -104,26 +99,7 @@ async function loadChatRequests(){
             <div class="info">
                 <b>${u.name} ${u.surname}</b> wants to chat
             </div>
-            <button class="btn accept" onclick="acceptRequest('${d.id}','${r.from}')">Accept</button>
-            <button class="btn reject" onclick="rejectRequest('${d.id}')">Reject</button>
-        `;
-        list.appendChild(card);
-    }
-
-    // Accepted requests (for chat list)
-    const accepted = await db.collection("requests").where("status","==","accepted").where("to","==",CURRENT.uid).get();
-    for(let d of accepted.docs){
-        const r = d.data();
-        const userDoc = await db.collection("users").doc(r.from).get();
-        const u = userDoc.data();
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-            <img src="${u.photo||'https://via.placeholder.com/150'}">
-            <div class="info">
-                <b>${u.name} ${u.surname}</b> Chat
-            </div>
-            <button class="btn accept" onclick="openChat('${CURRENT.uid}','${r.from}')">Open Chat</button>
+            <button class="btn accept" onclick="acceptRequest('${d.id}','${r.from}')">Open Chat</button>
         `;
         list.appendChild(card);
     }
@@ -147,19 +123,12 @@ async function loadChatRequests(){
     }
 }
 
-/* ACCEPT REQUEST → Create chat room */
+/* ACCEPT REQUEST → Open chat & create room */
 async function acceptRequest(id, other){
     await db.collection("requests").doc(id).update({status:"accepted"});
-    // Create chat doc
     const chatID = CURRENT.uid < other ? CURRENT.uid + "_" + other : other + "_" + CURRENT.uid;
     await db.collection("chats").doc(chatID).set({users:[CURRENT.uid,other],lastMsg:"",time:Date.now()});
-    loadChatRequests();
-}
-
-/* REJECT REQUEST → Delete */
-async function rejectRequest(id){
-    await db.collection("requests").doc(id).delete();
-    loadChatRequests();
+    location.href = "chat-room.html?id="+chatID;
 }
 
 /* OPEN CHAT */
@@ -169,4 +138,4 @@ function openChat(uid1, uid2){
 }
 </script>
 </body>
-    </html>
+</html>
