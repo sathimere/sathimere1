@@ -7,7 +7,7 @@
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script src="firebase.js"></script>
 
@@ -239,7 +239,10 @@ async function loadUsers(myId) {
                     <div style="color:gray">${u.gender}</div>
 
                     <button class="btn" onclick="sendLike('${uid}')">💜 Like</button>
-                    <button id="btn_${uid}" class="btn">Chat Request</button>
+
+                    <button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>
+
+                    <button id="btn_${uid}" class="btn">✉ Chat Request</button>
                 </div>
             `;
 
@@ -260,6 +263,11 @@ async function sendLike(uid) {
     });
 
     alert("Liked!");
+}
+
+/* VIEW PROFILE */
+function viewProfile(uid) {
+    window.location = "view-profile.html?id=" + uid;
 }
 
 /* CHECK CHAT REQUEST STATUS */
