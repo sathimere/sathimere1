@@ -12,165 +12,36 @@
 <script src="firebase.js"></script>
 
 <style>
-body {
-    font-family: Arial;
-    background: #ffe4f0;
-    margin: 0;
-    padding: 0;
-}
-
-/* Header */
-.header {
-    background: #ff1493;
-    padding: 15px;
-    color: white;
-    text-align: center;
-    font-size: 22px;
-    font-weight: bold;
-    position: fixed;
-    top: 0;
-    width: 100%;
-}
-
-/* Menu Button */
-.menu-btn {
-    position: absolute;
-    left: 15px;
-    top: 14px;
-    font-size: 25px;
-    color: white;
-    cursor: pointer;
-}
-
-/* Logout */
-.logout-btn {
-    position: absolute;
-    right: 15px;
-    top: 10px;
-    background: white;
-    color: #ff1493;
-    border: 2px solid #ff1493;
-    padding: 6px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-/* MENU */
-#menu {
-    width: 0;
-    height: 100%;
-    background: white;
-    position: fixed;
-    top: 0;
-    left: 0;
-    overflow: hidden;
-    transition: 0.3s;
-    z-index: 20;
-    padding-top: 60px;
-    box-shadow: 4px 0 12px rgba(0,0,0,0.3);
-}
-
-#menu a {
-    display: block;
-    padding: 15px 25px;
-    font-size: 18px;
-    text-decoration: none;
-    color: #444;
-}
-
-#menu a:hover {
-    background: #ffe1f1;
-}
-
-.close-menu {
-    position: absolute;
-    top: 12px;
-    right: 15px;
-    font-size: 28px;
-    cursor: pointer;
-}
-
-/* Content */
-.container {
-    padding: 80px 15px 80px;
-}
-
-/* User Card */
-.user-card {
-    background: white;
-    margin-bottom: 15px;
-    padding: 15px;
-    border-radius: 15px;
-    box-shadow: 0 0 10px #ffc0d9;
-    display: flex;
-    align-items: center;
-}
-
-.user-card img {
-    width: 55px;
-    height: 55px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid #ff1493;
-    margin-right: 15px;
-}
-
+body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
+.header { background: #ff1493; padding: 15px; color: white; text-align: center; font-size: 22px; font-weight: bold; position: fixed; top: 0; width: 100%; }
+.menu-btn { position: absolute; left: 15px; top: 14px; font-size: 25px; color: white; cursor: pointer; }
+.logout-btn { position: absolute; right: 15px; top: 10px; background: white; color: #ff1493; border: 2px solid #ff1493; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+#menu { width: 0; height: 100%; background: white; position: fixed; top: 0; left: 0; overflow: hidden; transition: 0.3s; z-index: 20; padding-top: 60px; box-shadow: 4px 0 12px rgba(0,0,0,0.3); }
+#menu a { display: block; padding: 15px 25px; font-size: 18px; text-decoration: none; color: #444; }
+#menu a:hover { background: #ffe1f1; }
+.close-menu { position: absolute; top: 12px; right: 15px; font-size: 28px; cursor: pointer; }
+.container { padding: 80px 15px 80px; }
+.user-card { background: white; margin-bottom: 15px; padding: 15px; border-radius: 15px; box-shadow: 0 0 10px #ffc0d9; display: flex; align-items: center; }
+.user-card img { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 3px solid #ff1493; margin-right: 15px; }
 .name { font-weight: bold; color: #ff1493; }
-
-.btn {
-    background: #ff1493;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    margin-top: 5px;
-    padding: 7px 12px;
-    cursor: pointer;
-}
-
-.btn-disabled {
-    background: gray;
-}
-
-/* Bottom Nav */
-.bottom-nav {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    background: white;
-    display: flex;
-    justify-content: space-around;
-    border-top: 1px solid #ddd;
-    padding: 8px 0;
-}
-
-.nav-item {
-    text-align: center;
-    color: #ff1493;
-    font-weight: bold;
-}
-
-.nav-item span {
-    font-size: 26px;
-    display: block;
-}
+.btn { background: #ff1493; color: white; border: none; border-radius: 8px; margin-top: 5px; padding: 7px 12px; cursor: pointer; }
+.btn-disabled { background: gray; }
+.bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; border-top: 1px solid #ddd; padding: 8px 0; }
+.nav-item { text-align: center; color: #ff1493; font-weight: bold; }
+.nav-item span { font-size: 26px; display: block; }
 </style>
-
 </head>
 
 <body>
 
-<!-- HEADER -->
 <div class="header">
     <span class="menu-btn" onclick="openMenu()">☰</span>
     Sathi Mere
     <button class="logout-btn" onclick="logout()">Logout</button>
 </div>
 
-<!-- MENU -->
 <div id="menu">
     <span class="close-menu" onclick="closeMenu()">✖</span>
-
     <a href="profile.html">My Profile</a>
     <a href="wallet.html">Wallet</a>
     <a href="help.html">Help & Support</a>
@@ -178,191 +49,155 @@ body {
     <a onclick="logout()">Logout</a>
 </div>
 
-<!-- CONTENT -->
 <div class="container" id="userList">Loading...</div>
 
-<!-- BOTTOM NAV -->
 <div class="bottom-nav">
-    <div class="nav-item" onclick="location.href='like.html'">
-        <span>💜</span> Like
-    </div>
-
-    <div class="nav-item" onclick="location.href='chat.html'">
-        <span>✉️</span> Chat
-    </div>
-
-    <div class="nav-item" onclick="location.href='profile.html'">
-        <span>👤</span> Profile
-    </div>
+    <div class="nav-item" onclick="location.href='like.html'"><span>💜</span> Like</div>
+    <div class="nav-item" onclick="location.href='chat.html'"><span>✉️</span> Chat</div>
+    <div class="nav-item" onclick="location.href='profile.html'"><span>👤</span> Profile</div>
 </div>
 
 <script>
-
-/* MENU CONTROL */
 function openMenu(){ menu.style.width = "260px"; }
 function closeMenu(){ menu.style.width = "0"; }
 
-/* AUTH CHECK */
+let CURRENT_USER = null;
+
 auth.onAuthStateChanged(async (user) => {
-    if (!user) return (window.location = "login.html");
+    if(!user) return window.location="login.html";
+    CURRENT_USER = user;
     loadUsers(user.uid);
+    listenIncomingRequests(user.uid);
 });
 
-/* LOAD USERS */
 async function loadUsers(myId) {
     const list = document.getElementById("userList");
     list.innerHTML = "Loading...";
 
-    let me = await db.collection("users").doc(myId).get();
-    let myGender = me.data().gender;
-
+    let meDoc = await db.collection("users").doc(myId).get();
+    let myGender = meDoc.data().gender;
     let opposite = myGender === "Male" ? "Female" : "Male";
 
-    db.collection("users")
-      .where("gender", "==", opposite)
-      .onSnapshot(snap => {
-
-        list.innerHTML = "";
-
-        snap.forEach(doc => {
+    db.collection("users").where("gender","==",opposite)
+      .onSnapshot(snap=>{
+        list.innerHTML="";
+        snap.forEach(doc=>{
             let u = doc.data();
             let uid = doc.id;
 
             let card = document.createElement("div");
-            card.className = "user-card";
-
+            card.className="user-card";
             card.innerHTML = `
                 <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
                 <div style="flex:1">
                     <div class="name">${u.name} ${u.surname}</div>
                     <div style="color:gray">${u.gender}</div>
-
                     <button class="btn" onclick="sendLike('${uid}')">💜 Like</button>
-
                     <button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>
-
                     <button id="btn_${uid}" class="btn">✉ Chat Request</button>
                 </div>
             `;
-
             list.appendChild(card);
 
-            checkStatus(myId, uid);
-            document.getElementById("btn_" + uid).onclick = () => sendRequest(myId, uid, myGender);
+            checkStatus(myId, uid, u.gender);
+            document.getElementById("btn_" + uid).onclick = ()=> sendRequest(myId, uid, u.gender);
         });
     });
 }
 
-/* LIKE */
 async function sendLike(uid) {
     await db.collection("likes").add({
-        from: auth.currentUser.uid,
+        from: CURRENT_USER.uid,
         to: uid,
         time: Date.now()
     });
-
     alert("Liked!");
 }
 
-/* VIEW PROFILE */
-function viewProfile(uid) {
-    window.location = "view-profile.html?id=" + uid;
+function viewProfile(uid){
+    window.location="view-profile.html?id="+uid;
 }
 
-/* CHECK CHAT REQUEST STATUS */
-async function checkStatus(myId, otherId) {
+async function checkStatus(myId, otherId, gender){
     let btn = document.getElementById("btn_" + otherId);
-
-    let doc = await db.collection("chatRequests")
-                      .doc(myId + "_" + otherId)
-                      .get();
-
-    if (doc.exists) {
+    let doc = await db.collection("chatRequests").doc(myId+"_"+otherId).get();
+    if(doc.exists){
         let status = doc.data().status;
-
-        if (status === "pending") {
-            btn.innerText = "Request Sent";
-            btn.disabled = true;
+        if(status==="pending"){
+            btn.innerText="Request Sent";
+            btn.disabled=true;
             btn.classList.add("btn-disabled");
         }
-
-        if (status === "accepted") {
-            btn.innerText = "Chat Now";
-            btn.onclick = () => window.location = "chat-room.html?u=" + otherId;
+        if(status==="accepted"){
+            btn.innerText="Chat Now";
+            btn.onclick = ()=> window.location="chat-room.html?u="+otherId;
         }
     }
 }
 
-/* SEND CHAT REQUEST WITH WALLET DEDUCTION */
-async function sendRequest(myId, toId, myGender){
-    // Only male pays
-    let maleId = myGender === "Male" ? myId : null;
+async function sendRequest(myId,toId,toGender){
+    // Male user pays Rs 10
+    let maleDoc = await db.collection("users").doc(myId).get();
+    let wallet = maleDoc.data().wallet || 0;
 
-    if(maleId){
-        let maleDoc = await db.collection("users").doc(maleId).get();
-        let wallet = maleDoc.data().wallet || 0;
-
-        if(wallet < 10){
-            alert("Insufficient balance! Rs 10 required to send chat request.");
+    if(maleDoc.data().gender === "Male"){
+        if(wallet<10){
+            alert("Insufficient balance! Rs 10 required.");
             return;
         }
-
-        await db.collection("users").doc(maleId).update({
-            wallet: wallet - 10
-        });
+        await db.collection("users").doc(myId).update({wallet: wallet-10});
     }
 
     // Create request
-    await db.collection("chatRequests")
-        .doc(myId + "_" + toId)
-        .set({
-            from: myId,
-            to: toId,
-            status: "pending",
-            timestamp: Date.now()
-        });
-
-    alert("Chat request sent! Rs 10 deducted if male.");
-    checkStatus(myId, toId);
-}
-
-/* FEMALE ACCEPT REQUEST */
-async function acceptRequest(docId, maleId, femaleId){
-    await db.collection("chatRequests").doc(docId).update({ status: "accepted" });
-
-    let chatID = maleId < femaleId ? maleId + "_" + femaleId : femaleId + "_" + maleId;
-
-    await db.collection("chats").doc(chatID).set({
-        users: [maleId, femaleId],
-        lastMsg: "",
-        time: Date.now()
+    await db.collection("chatRequests").doc(myId+"_"+toId).set({
+        from: myId,
+        to: toId,
+        status:"pending",
+        timestamp: Date.now()
     });
 
-    alert("Chat started!");
-    window.location = "chat-room.html?u=" + maleId;
+    alert("Chat request sent!");
+    checkStatus(myId,toId,toGender);
 }
 
-/* FEMALE REJECT REQUEST */
-async function rejectRequest(docId, maleId){
+// Listen incoming requests for current user (male or female)
+function listenIncomingRequests(uid){
+    db.collection("chatRequests").where("to","==",uid)
+      .onSnapshot(snap=>{
+        snap.docChanges().forEach(change=>{
+            if(change.type==="added"){
+                let data = change.doc.data();
+                // Male user will see request from female
+                if(data.status==="pending" && data.to===uid){
+                    alert(`New chat request from ${data.from}`);
+                }
+            }
+        });
+      });
+}
+
+// Female accept
+async function acceptRequest(docId,maleId,femaleId){
+    await db.collection("chatRequests").doc(docId).update({status:"accepted"});
+    let chatID = maleId<femaleId ? maleId+"_"+femaleId : femaleId+"_"+maleId;
+    await db.collection("chats").doc(chatID).set({users:[maleId,femaleId],lastMsg:"",time:Date.now()});
+    alert("Chat started!");
+    window.location="chat-room.html?u="+maleId;
+}
+
+// Female reject
+async function rejectRequest(docId,maleId){
     let maleDoc = await db.collection("users").doc(maleId).get();
     let wallet = maleDoc.data().wallet || 0;
-
-    await db.collection("users").doc(maleId).update({
-        wallet: wallet + 10
-    });
-
+    await db.collection("users").doc(maleId).update({wallet: wallet+10});
     await db.collection("chatRequests").doc(docId).delete();
     alert("Request rejected. Rs 10 refunded.");
 }
 
-/* LOGOUT */
-function logout() {
-    auth.signOut().then(() => {
-        window.location = "login.html";
-    });
+function logout(){
+    auth.signOut().then(()=> window.location="login.html");
 }
 
 </script>
-
 </body>
 </html>
