@@ -12,36 +12,166 @@
 <script src="firebase.js"></script>
 
 <style>
-body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
-.header { background: #ff1493; padding: 15px; color: white; text-align: center; font-size: 22px; font-weight: bold; position: fixed; top: 0; width: 100%; }
-.menu-btn { position: absolute; left: 15px; top: 14px; font-size: 25px; color: white; cursor: pointer; }
-.logout-btn { position: absolute; right: 15px; top: 10px; background: white; color: #ff1493; border: 2px solid #ff1493; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-#menu { width: 0; height: 100%; background: white; position: fixed; top: 0; left: 0; overflow: hidden; transition: 0.3s; z-index: 20; padding-top: 60px; box-shadow: 4px 0 12px rgba(0,0,0,0.3); }
-#menu a { display: block; padding: 15px 25px; font-size: 18px; text-decoration: none; color: #444; }
-#menu a:hover { background: #ffe1f1; }
-.close-menu { position: absolute; top: 12px; right: 15px; font-size: 28px; cursor: pointer; }
-.container { padding: 80px 15px 80px; }
-.user-card { background: white; margin-bottom: 15px; padding: 15px; border-radius: 15px; box-shadow: 0 0 10px #ffc0d9; display: flex; align-items: center; }
-.user-card img { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 3px solid #ff1493; margin-right: 15px; }
+
+body {
+    font-family: Arial;
+    background: #ffe4f0;
+    margin: 0;
+    padding: 0;
+}
+
+/* Header */
+.header {
+    background: #ff1493;
+    padding: 15px;
+    color: white;
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    position: fixed;
+    top: 0;
+    width: 100%;
+}
+
+/* Menu Button */
+.menu-btn {
+    position: absolute;
+    left: 15px;
+    top: 14px;
+    font-size: 25px;
+    color: white;
+    cursor: pointer;
+}
+
+/* Logout */
+.logout-btn {
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    background: white;
+    color: #ff1493;
+    border: 2px solid #ff1493;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* MENU */
+#menu {
+    width: 0;
+    height: 100%;
+    background: white;
+    position: fixed;
+    top: 0;
+    left: 0;
+    overflow: hidden;
+    transition: 0.3s;
+    z-index: 20;
+    padding-top: 60px;
+    box-shadow: 4px 0 12px rgba(0,0,0,0.3);
+}
+
+#menu a {
+    display: block;
+    padding: 15px 25px;
+    font-size: 18px;
+    text-decoration: none;
+    color: #444;
+}
+
+#menu a:hover {
+    background: #ffe1f1;
+}
+
+.close-menu {
+    position: absolute;
+    top: 12px;
+    right: 15px;
+    font-size: 28px;
+    cursor: pointer;
+}
+
+/* Content */
+.container {
+    padding: 80px 15px 80px;
+}
+
+/* User Card */
+.user-card {
+    background: white;
+    margin-bottom: 15px;
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 0 10px #ffc0d9;
+    display: flex;
+    align-items: center;
+}
+
+.user-card img {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #ff1493;
+    margin-right: 15px;
+}
+
 .name { font-weight: bold; color: #ff1493; }
-.btn { background: #ff1493; color: white; border: none; border-radius: 8px; margin-top: 5px; padding: 7px 12px; cursor: pointer; }
-.btn-disabled { background: gray; }
-.bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; border-top: 1px solid #ddd; padding: 8px 0; }
-.nav-item { text-align: center; color: #ff1493; font-weight: bold; }
-.nav-item span { font-size: 26px; display: block; }
+
+.btn {
+    background: #ff1493;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    margin-top: 5px;
+    padding: 7px 12px;
+    cursor: pointer;
+}
+
+.btn-disabled {
+    background: gray;
+}
+
+/* Bottom Nav */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: white;
+    display: flex;
+    justify-content: space-around;
+    border-top: 1px solid #ddd;
+    padding: 8px 0;
+}
+
+.nav-item {
+    text-align: center;
+    color: #ff1493;
+    font-weight: bold;
+}
+
+.nav-item span {
+    font-size: 26px;
+    display: block;
+}
 </style>
+
 </head>
 
 <body>
 
+<!-- HEADER -->
 <div class="header">
     <span class="menu-btn" onclick="openMenu()">☰</span>
     Sathi Mere
     <button class="logout-btn" onclick="logout()">Logout</button>
 </div>
 
+<!-- MENU -->
 <div id="menu">
     <span class="close-menu" onclick="closeMenu()">✖</span>
+
     <a href="profile.html">My Profile</a>
     <a href="wallet.html">Wallet</a>
     <a href="help.html">Help & Support</a>
@@ -49,41 +179,55 @@ body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
     <a onclick="logout()">Logout</a>
 </div>
 
+<!-- CONTENT -->
 <div class="container" id="userList">Loading...</div>
 
+<!-- BOTTOM NAV -->
 <div class="bottom-nav">
-    <div class="nav-item" onclick="location.href='like.html'"><span>💜</span> Like</div>
-    <div class="nav-item" onclick="location.href='chat.html'"><span>✉️</span> Chat</div>
-    <div class="nav-item" onclick="location.href='profile.html'"><span>👤</span> Profile</div>
+    <div class="nav-item" onclick="location.href='like.html'">
+        <span>💜</span> Like
+    </div>
+
+    <div class="nav-item" onclick="location.href='chat.html'">
+        <span>✉️</span> Chat
+    </div>
+
+    <div class="nav-item" onclick="location.href='profile.html'">
+        <span>👤</span> Profile
+    </div>
 </div>
 
 <script>
+
+/* MENU CONTROL */
 function openMenu(){ menu.style.width = "260px"; }
 function closeMenu(){ menu.style.width = "0"; }
 
 let CURRENT_USER = null;
 
-auth.onAuthStateChanged(async user => {
-    if(!user) return window.location="login.html";
+/* AUTH CHECK */
+auth.onAuthStateChanged(async (user) => {
+    if (!user) return (window.location = "login.html");
     CURRENT_USER = user;
     loadUsers(user.uid);
+    listenIncomingRequests(user.uid);
 });
 
-// Load all opposite gender users
-async function loadUsers(myId){
+/* LOAD USERS */
+async function loadUsers(myId) {
     const list = document.getElementById("userList");
     list.innerHTML = "Loading...";
 
-    let meDoc = await db.collection("users").doc(myId).get();
-    let myGender = meDoc.data().gender;
+    let me = await db.collection("users").doc(myId).get();
+    let myGender = me.data().gender;
     let opposite = myGender === "Male" ? "Female" : "Male";
 
     db.collection("users").where("gender","==",opposite)
       .onSnapshot(snap=>{
-        list.innerHTML="";
+        list.innerHTML = "";
         snap.forEach(doc=>{
-            const u = doc.data();
-            const uid = doc.id;
+            let u = doc.data();
+            let uid = doc.id;
 
             let card = document.createElement("div");
             card.className="user-card";
@@ -98,13 +242,13 @@ async function loadUsers(myId){
                 </div>
             `;
             list.appendChild(card);
-
             checkStatus(myId, uid);
-            document.getElementById("btn_" + uid).onclick = ()=> sendRequest(myId, uid);
+            document.getElementById("btn_" + uid).onclick = ()=> sendRequest(myId, uid, u.gender);
         });
     });
 }
 
+/* LIKE */
 async function sendLike(uid){
     await db.collection("likes").add({
         from: CURRENT_USER.uid,
@@ -114,85 +258,69 @@ async function sendLike(uid){
     alert("Liked!");
 }
 
+/* VIEW PROFILE */
 function viewProfile(uid){
     window.location="view-profile.html?id="+uid;
 }
 
-// Check existing chat requests
+/* CHECK STATUS */
 async function checkStatus(myId, otherId){
-    let btn = document.getElementById("btn_" + otherId);
-    const doc1 = await db.collection("requests").doc(myId+"_"+otherId).get();
-    const doc2 = await db.collection("requests").doc(otherId+"_"+myId).get();
-
-    if(doc1.exists && doc1.data().status==="pending"){
-        btn.innerText="Request Sent";
-        btn.disabled=true;
-        btn.classList.add("btn-disabled");
-    }
-
-    if(doc1.exists && doc1.data().status==="accepted"){
-        btn.innerText="Chat Now";
-        btn.onclick = ()=> window.location="chat-room.html?id="+myId+"_"+otherId;
-    }
-
-    if(doc2.exists && doc2.data().status==="pending"){
-        btn.innerText="Incoming Request";
-        btn.disabled=true;
-        btn.classList.add("btn-disabled");
-    }
-
-    if(doc2.exists && doc2.data().status==="accepted"){
-        btn.innerText="Chat Now";
-        btn.onclick = ()=> window.location="chat-room.html?id="+myId+"_"+otherId;
+    let btn = document.getElementById("btn_"+otherId);
+    let doc = await db.collection("chatRequests").doc(myId+"_"+otherId).get();
+    if(doc.exists){
+        let status = doc.data().status;
+        if(status==="pending"){
+            btn.innerText="Request Sent";
+            btn.disabled=true;
+            btn.classList.add("btn-disabled");
+        }
+        if(status==="accepted"){
+            btn.innerText="Chat Now";
+            btn.onclick = ()=> window.location="chat-room.html?u="+otherId;
+        }
     }
 }
 
-// Send request and handle wallet deduction
-async function sendRequest(myId, toId){
-    const meDoc = await db.collection("users").doc(myId).get();
-    const myGender = meDoc.data().gender;
-    const wallet = meDoc.data().wallet || 0;
+/* SEND REQUEST WITH WALLET */
+async function sendRequest(myId,toId,toGender){
+    let meDoc = await db.collection("users").doc(myId).get();
+    let wallet = meDoc.data().wallet || 0;
 
-    // Only male pays Rs 10
-    if(myGender==="Male" && wallet<10){
-        alert("Insufficient balance! Rs 10 required.");
-        return;
-    }
-
-    if(myGender==="Male"){
+    if(meDoc.data().gender==="Male"){
+        if(wallet<10){
+            alert("Insufficient balance! Rs 10 required.");
+            return;
+        }
         await db.collection("users").doc(myId).update({wallet: wallet-10});
     }
 
-    await db.collection("requests").doc(myId+"_"+toId).set({
+    await db.collection("chatRequests").doc(myId+"_"+toId).set({
         from: myId,
         to: toId,
         status:"pending",
         timestamp: Date.now()
     });
-
-    alert("Chat request sent! Rs 10 deducted if male.");
+    alert("Chat request sent!");
     checkStatus(myId,toId);
 }
 
-// Listen for incoming requests to refund if rejected
-db.collection("requests").where("status","==","pending")
-.onSnapshot(snapshot=>{
-    snapshot.docChanges().forEach(async change=>{
-        if(change.type==="removed"){
-            const data = change.doc.data();
-            const fromDoc = await db.collection("users").doc(data.from).get();
-            if(fromDoc.data().gender==="Male"){
-                const wallet = fromDoc.data().wallet || 0;
-                await db.collection("users").doc(data.from).update({wallet: wallet+10});
+/* LISTEN INCOMING REQUESTS */
+function listenIncomingRequests(uid){
+    db.collection("chatRequests").where("to","==",uid).onSnapshot(snap=>{
+        snap.docChanges().forEach(change=>{
+            if(change.type==="added"){
+                let data = change.doc.data();
+                alert("New chat request from "+data.from);
             }
-        }
+        });
     });
-});
+}
 
+/* LOGOUT */
 function logout(){
     auth.signOut().then(()=> window.location="login.html");
 }
-</script>
 
+</script>
 </body>
     </html>
