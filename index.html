@@ -249,7 +249,7 @@ async function loadUsers(myId) {
             list.appendChild(card);
 
             checkStatus(myId, uid);
-            document.getElementById("btn_" + uid).onclick = () => sendRequest(myId, uid);
+            document.getElementById("btn_" + uid).onclick = () => sendRequest(myId, uid, u.gender);
         });
     });
 }
@@ -294,8 +294,24 @@ async function checkStatus(myId, otherId) {
     }
 }
 
-/* SEND CHAT REQUEST */
-async function sendRequest(myId, toId) {
+/* SEND CHAT REQUEST WITH WALLET DEDUCTION */
+async function sendRequest(myId, toId, gender){
+    // Male pays Rs 10
+    if(gender === "Female"){
+        let maleDoc = await db.collection("users").doc(myId).get();
+        let wallet = maleDoc.data().wallet || 0;
+
+        if(wallet < 10){
+            alert("Insufficient balance! Rs 10 required to send chat request.");
+            return;
+        }
+
+        await db.collection("users").doc(myId).update({
+            wallet: wallet - 10
+        });
+    }
+
+    // Create request
     await db.collection("chatRequests")
         .doc(myId + "_" + toId)
         .set({
@@ -305,8 +321,37 @@ async function sendRequest(myId, toId) {
             timestamp: Date.now()
         });
 
-    alert("Chat request sent!");
+    alert("Chat request sent! Rs 10 deducted if male.");
     checkStatus(myId, toId);
+}
+
+/* FEMALE ACCEPT REQUEST */
+async function acceptRequest(docId, maleId, femaleId){
+    await db.collection("chatRequests").doc(docId).update({ status: "accepted" });
+
+    let chatID = maleId < femaleId ? maleId + "_" + femaleId : femaleId + "_" + maleId;
+
+    await db.collection("chats").doc(chatID).set({
+        users: [maleId, femaleId],
+        lastMsg: "",
+        time: Date.now()
+    });
+
+    alert("Chat started!");
+    window.location = "chat-room.html?u=" + maleId;
+}
+
+/* FEMALE REJECT REQUEST */
+async function rejectRequest(docId, maleId){
+    let maleDoc = await db.collection("users").doc(maleId).get();
+    let wallet = maleDoc.data().wallet || 0;
+
+    await db.collection("users").doc(maleId).update({
+        wallet: wallet + 10
+    });
+
+    await db.collection("chatRequests").doc(docId).delete();
+    alert("Request rejected. Rs 10 refunded.");
 }
 
 /* LOGOUT */
@@ -319,4 +364,4 @@ function logout() {
 </script>
 
 </body>
-</html>
+        </html>
