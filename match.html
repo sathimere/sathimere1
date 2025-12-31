@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Matches</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+<style>
+body{
+  margin:0;
+  background:#f7f7f7;
+  font-family:'Poppins', Arial;
+}
+
+.header{
+  width:100%;
+  background:#ff4da6;
+  padding:18px 0;
+  text-align:center;
+  color:white;
+  font-size:22px;
+  font-weight:600;
+}
+
+.container{
+  width:95%;
+  margin:auto;
+  margin-top:20px;
+}
+
+.card{
+  background:white;
+  border-radius:14px;
+  padding:15px;
+  margin-bottom:20px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.08);
+}
+
+.top{
+  display:flex;
+  align-items:center;
+  gap:15px;
+}
+
+.pic{
+  width:80px;
+  height:80px;
+  border-radius:50%;
+  object-fit:cover;
+  border:3px solid #ff4da6;
+}
+
+.name{
+  font-size:18px;
+  font-weight:700;
+}
+
+.city{
+  font-size:14px;
+  color:#555;
+}
+
+.detail{
+  margin-top:10px;
+  font-size:14px;
+  line-height:20px;
+}
+
+.view-btn{
+  margin-top:12px;
+  width:100%;
+  padding:10px;
+  border-radius:8px;
+  border:none;
+  background:#ff4da6;
+  color:white;
+  font-size:15px;
+  font-weight:600;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">Best Matches</div>
+
+<div class="container" id="matchList">
+  <!-- Cards load here -->
+</div>
+
+<script>
+// --------------------
+// FIREBASE CONFIG
+// --------------------
+const firebaseConfig = {
+  apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
+  authDomain: "sathimere-415fa.firebaseapp.com",
+  projectId: "sathimere-415fa",
+  storageBucket: "sathimere-415fa.firebasestorage.app",
+  messagingSenderId: "290492321074",
+  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+// Auto login
+auth.signInAnonymously();
+
+// --------------------
+// LOAD MATCHES
+// --------------------
+auth.onAuthStateChanged(async (user)=>{
+    loadMatches();
+});
+
+async function loadMatches(){
+    let list = document.getElementById("matchList");
+    list.innerHTML = "<p>Loading...</p>";
+
+    let snapshot = await db.collection("users").get();
+
+    list.innerHTML = "";
+
+    snapshot.forEach(doc=>{
+        let d = doc.data();
+
+        // Skip empty profiles
+        if(!d.name) return;
+
+        let photo = d.photo || "https://i.imgur.com/3G0P4tJ.png";
+        let mobile = d.mobilePrivacy === "public" ? d.mobile : "Private";
+
+        let card = `
+        <div class="card">
+          <div class="top">
+            <img class="pic" src="${photo}">
+            <div>
+              <div class="name">${d.surname || ""} ${d.name || ""}</div>
+              <div class="city">${d.city || ""}, ${d.state || ""}</div>
+            </div>
+          </div>
+
+          <div class="detail">
+            <b>Age:</b> ${d.age || "N/A"}<br>
+            <b>Caste:</b> ${d.caste || "N/A"}<br>
+            <b>Mobile:</b> ${mobile}<br>
+            <b>Choice:</b> ${d.choice || "-"}<br>
+            <b>Interest:</b> ${d.interest || "-"}
+          </div>
+
+          <button class="view-btn" onclick="alert('Profile Opening Soon…')">View Profile</button>
+        </div>
+        `;
+
+        list.innerHTML += card;
+    });
+}
+</script>
+
+</body>
+</html>
