@@ -10,78 +10,40 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
   <style>
-    body {
-      font-family: Arial;
-      margin: 0;
-      background: linear-gradient(135deg, #ff4fa5, #ff7bc1);
-      min-height: 100vh;
-      padding: 20px;
-      color: #fff;
-    }
+    body { font-family: Arial; padding: 20px; }
+    .box { max-width: 360px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; }
+    input { width: 100%; padding: 10px; margin: 8px 0; }
+    button { width: 100%; padding: 12px; margin-top: 10px; font-size: 16px; cursor: pointer; }
+    .link { color: blue; text-decoration: underline; cursor: pointer; }
 
-    h2, h3 { text-align: center; }
-
-    .box {
-      background: #ffffff;
-      color: #333;
-      max-width: 360px;
-      margin: auto;
-      padding: 25px;
-      border-radius: 15px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-      margin-top: 25px;
-      transition: 0.3s;
-    }
-
-    input {
-      width: 100%;
-      padding: 12px;
-      margin: 10px 0;
+    /* Admin Panel */
+    #adminPanel {
+      display: none;
+      max-width: 450px;
+      margin: 30px auto;
+      padding: 15px;
       border-radius: 10px;
-      border: 1px solid #ddd;
-      font-size: 15px;
+      border: 2px solid #333;
+      background: #fafafa;
     }
-
-    button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 12px;
-      font-size: 16px;
-      border: none;
-      border-radius: 10px;
-      background: #ff4fa5;
-      color: #fff;
-      font-weight: bold;
-      cursor: pointer;
-      transition: 0.2s;
+    .userCard {
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 8px;
+      margin: 8px 0;
     }
-
-    button:hover { opacity: 0.8; }
-
-    .link {
-      color: #ff4fa5;
-      font-weight: bold;
-      text-decoration: underline;
-      cursor: pointer;
-      text-align: center;
-      margin-top: 10px;
-      display: block;
-    }
-
-    #signupBox { display: none; }
   </style>
 </head>
 
 <body>
 
-<h2>Sathi Mere – Login</h2>
+<h2 style="text-align:center;">Sathi Mere – Login</h2>
 
 <!-- USER + ADMIN LOGIN BOX -->
 <div class="box" id="loginBox">
 
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="password" placeholder="Password">
-
   <button onclick="loginEmail()">Login</button>
 
   <p class="link" onclick="showSignup()">Create New Account</p>
@@ -90,24 +52,32 @@
   <hr>
 
   <button onclick="loginGoogle()">Login with Google</button>
-
 </div>
 
 
 <!-- SIGNUP BOX -->
-<div class="box" id="signupBox">
+<div class="box" id="signupBox" style="display:none;margin-top:25px;">
   <h3>Create Account</h3>
-
   <input type="email" id="signupEmail" placeholder="Email">
-  <input type="password" id="signupPass" placeholder="Password (6+ chars)">
-
+  <input type="password" id="signupPass" placeholder="Password">
   <button onclick="createAccount()">Create Account</button>
   <p class="link" onclick="hideSignup()">Back to Login</p>
 </div>
 
 
+<!-- ADMIN PANEL (Hidden) -->
+<div id="adminPanel">
+  <h3 style="text-align:center;">Admin Panel</h3>
+
+  <div id="userList">Loading users...</div>
+
+  <button onclick="logout()">Logout</button>
+</div>
+
+
+
 <script>
-/* Firebase Init */
+/* FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
   authDomain: "sathimere-415fa.firebaseapp.com",
@@ -122,47 +92,37 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 
-/* USER + ADMIN LOGIN */
-async function loginEmail() {
-  let email = document.getElementById("email").value.trim();
-  let pass = document.getElementById("password").value.trim();
+// ---------------- EMAIL LOGIN (USER + ADMIN SAME) ----------------
+function loginEmail() {
+  let email = document.getElementById("email").value;
+  let pass = document.getElementById("password").value;
 
-  if (!email || !pass) {
-    alert("Please enter email & password");
-    return;
-  }
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(() => {
 
-  try {
-    let adminDoc = await db.collection("admins").doc(email).get();
+      // ADMIN LOGIN CHECK
+      if (email === "sathimere.admin@gmail.com") {
+        showAdminPanel();
+      } else {
+        // NORMAL USER
+        window.location = "index.html";
+      }
 
-    if (adminDoc.exists && adminDoc.data().password === pass) {
-      // ---------- ADMIN LOGIN ----------
-      alert("Admin Login Successfully");
-      window.location = "admin.html";
-      return;
-    }
-
-    // ---------- USER LOGIN ----------
-    auth.signInWithEmailAndPassword(email, pass)
-      .then(() => window.location = "index.html")
-      .catch(e => alert(e.message));
-
-  } catch (e) {
-    alert(e.message);
-  }
+    })
+    .catch(err => alert(err.message));
 }
 
 
-/* GOOGLE LOGIN */
+// ---------------- GOOGLE LOGIN ----------------
 function loginGoogle() {
-  let provider = new firebase.auth.GoogleAuthProvider();
+  var provider = new firebase.auth.GoogleAuthProvider();
   auth.signInWithPopup(provider)
     .then(() => window.location = "index.html")
-    .catch(e => alert(e.message));
+    .catch(err => alert(err.message));
 }
 
 
-/* CREATE ACCOUNT */
+// ---------------- CREATE ACCOUNT ----------------
 function createAccount() {
   let email = document.getElementById("signupEmail").value;
   let pass = document.getElementById("signupPass").value;
@@ -170,31 +130,66 @@ function createAccount() {
   auth.createUserWithEmailAndPassword(email, pass)
     .then(() => {
       alert("Account Created!");
-      window.location = "profile.html";
+      window.location = "index.html";
     })
-    .catch(e => alert(e.message));
+    .catch(err => alert(err.message));
 }
 
 
-/* RESET PASSWORD */
+// ---------------- RESET PASSWORD ----------------
 function resetPassword() {
   let email = prompt("Enter your email:");
   if (!email) return;
 
   auth.sendPasswordResetEmail(email)
-    .then(() => alert("Password reset mail sent"))
-    .catch(e => alert(e.message));
+    .then(() => alert("Password reset link sent"))
+    .catch(err => alert(err.message));
 }
 
 
-/* UI HANDLERS */
+// ---------------- SHOW SIGNUP / HIDE SIGNUP ----------------
 function showSignup() {
-  signupBox.style.display = "block";
-  loginBox.style.display = "none";
+  document.getElementById("signupBox").style.display = "block";
 }
 function hideSignup() {
-  signupBox.style.display = "none";
-  loginBox.style.display = "block";
+  document.getElementById("signupBox").style.display = "none";
+}
+
+
+
+// --------------------- ADMIN PANEL ------------------------
+function showAdminPanel() {
+  document.getElementById("loginBox").style.display = "none";
+  document.getElementById("signupBox").style.display = "none";
+  document.getElementById("adminPanel").style.display = "block";
+
+  loadUsers();
+}
+
+
+function loadUsers() {
+  db.collection("users").onSnapshot(snapshot => {
+    let html = "";
+    snapshot.forEach(doc => {
+      let u = doc.data();
+      html += `
+        <div class="userCard">
+          <b>${u.name || "No Name"}</b><br>
+          Email: ${u.email || "-"}<br>
+          Gender: ${u.gender || "-"}<br>
+          Wallet: ${u.wallet || 0}
+        </div>
+      `;
+    });
+
+    document.getElementById("userList").innerHTML = html || "No users found.";
+  });
+}
+
+
+// ---------------- LOGOUT ----------------
+function logout() {
+  auth.signOut().then(() => location.reload());
 }
 </script>
 
