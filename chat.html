@@ -1,200 +1,161 @@
 <!DOCTYPE html>
 <html>
 <head>
+<title>Sathi Mere - Chat</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SathiMere - Home & Chat</title>
-
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
+<script src="firebase.js"></script>
 <style>
-body {margin:0;font-family:Arial,sans-serif;background:#f2f2f2;}
-.header {height:55px;background:#ff1493;color:#fff;display:flex;align-items:center;justify-content:center;position:fixed;width:100%;top:0;z-index:10;font-size:20px;}
-.header span:first-child {position:absolute;left:15px;cursor:pointer;font-size:22px;}
-.header button {position:absolute;right:15px;background:#fff;color:#ff1493;border:none;padding:5px 10px;border-radius:8px;cursor:pointer;font-weight:bold;}
-.list {padding:10px;margin-top:65px;margin-bottom:80px;}
-.card {background:#fff;border-radius:15px;box-shadow:0 4px 12px rgba(0,0,0,0.1);margin-bottom:10px;overflow:hidden;display:flex;align-items:center;padding:10px;}
-.card img {width:60px;height:60px;border-radius:50%;object-fit:cover;margin-right:10px;}
-.info {flex:1;font-size:15px;color:#333;}
-.btn {padding:6px 12px;border:none;border-radius:8px;margin-left:5px;cursor:pointer;font-size:14px;font-weight:bold;}
-.accept {background:#ff1493;color:#fff;}
-.reject {background:#d9534f;color:#fff;}
-.bottom-nav {position:fixed;bottom:0;width:100%;background:#fff;border-top:1px solid #ddd;display:flex;justify-content:space-around;padding:10px 0;box-shadow:0 -3px 10px rgba(0,0,0,0.1);}
-.bottom-nav div {text-align:center;color:#ff1493;font-weight:bold;display:flex;flex-direction:column;gap:3px;cursor:pointer;font-size:13px;}
-.icon {font-size:24px;}
+body { font-family: Arial; background: #ffe4f0; margin:0; padding:0; }
+.header { background:#ff1493; padding:15px; color:#fff; text-align:center; font-size:22px; font-weight:bold; position:fixed; top:0; width:100%; z-index:10; }
+.container { padding:80px 15px 20px; }
+.section-title { margin-top:15px; font-weight:bold; color:#ff1493; font-size:18px; margin-bottom:10px; }
+.request-card { background:white; margin-bottom:10px; padding:10px 15px; border-radius:12px; display:flex; align-items:center; box-shadow:0 0 10px #ffc0d9; }
+.request-card img { width:50px; height:50px; border-radius:50%; object-fit:cover; border:3px solid #ff1493; margin-right:10px; }
+.name { font-weight:bold; color:#ff1493; }
+.btn { background:#ff1493; color:white; border:none; border-radius:8px; padding:6px 12px; margin-left:5px; cursor:pointer; }
+.btn-disabled { background:gray; }
 </style>
 </head>
-
 <body>
-<div class="header">
-<span onclick="openMenu()">☰</span>
-Sathi Mere
-<button onclick="logout()">Logout</button>
-</div>
 
-<div id="menu" style="width:0;height:100%;position:fixed;top:0;left:0;background:#fff;overflow-x:hidden;transition:0.3s;padding-top:60px;box-shadow:3px 0 10px rgba(0,0,0,0.2);z-index:20;">
-<a onclick="closeMenu()">✖</a>
-<a href="#">Dashboard</a>
-<a href="profile.html">My Profile</a>
-<a href="wallet.html">Wallet</a>
-<a href="help.html">Help & Support</a>
-</div>
-
-<div class="list" id="userList">Loading users...</div>
-
-<div class="list" id="requestList"></div>
-
-<div class="bottom-nav">
-<div onclick="loadUsersView()"><span class="icon">🏠</span>Home</div>
-<div onclick="loadRequestsView()"><span class="icon">💬</span>Chat</div>
-<div onclick="location.href='profile.html'"><span class="icon">👤</span>Profile</div>
-</div>
+<div class="header">Chat Requests</div>
+<div class="container" id="requestList">Loading...</div>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
-  authDomain: "sathimere-415fa.firebaseapp.com",
-  projectId: "sathimere-415fa",
-  storageBucket: "sathimere-415fa.firebasestorage.app",
-  messagingSenderId: "290492321074",
-  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
-
 let CURRENT = null;
 
-/* MENU */
-function openMenu(){ menu.style.width="260px"; }
-function closeMenu(){ menu.style.width="0"; }
-
-/* LOGOUT */
-function logout(){ auth.signOut().then(()=>location.href="login.html"); }
-
-/* INIT */
-auth.onAuthStateChanged(async u=>{
-  if(!u){ location.href="login.html"; return; }
-  CURRENT = u;
-  loadUsersView();
+auth.onAuthStateChanged(async user=>{
+    if(!user) return location.href="login.html";
+    CURRENT = user;
+    loadChatRequests();
 });
 
-/* ---------- USERS VIEW ---------- */
-async function loadUsersView(){
-  document.getElementById('requestList').style.display='none';
-  const list = document.getElementById('userList');
-  list.style.display='block';
-  list.innerHTML = "Loading users...";
+async function loadChatRequests(){
+    const container = document.getElementById("requestList");
+    container.innerHTML = "Loading...";
 
-  let me = await db.collection("users").doc(CURRENT.uid).get();
-  let myGender = me.data().gender;
-  let opposite = myGender==="Male"?"Female":"Male";
+    // Incoming Pending Requests
+    const incomingSnap = await db.collection("chatRequests")
+        .where("to","==",CURRENT.uid)
+        .where("status","==","pending").get();
 
-  db.collection("users").where("gender","==",opposite).onSnapshot(snap=>{
-    list.innerHTML = "";
-    snap.forEach(doc=>{
-      let u = doc.data(), uid=doc.id;
-      let card = document.createElement("div");
-      card.className="card";
-      card.innerHTML = `
-        <img src="${u.photo||'https://via.placeholder.com/150'}">
-        <div class="info">
-          <b>${u.name} ${u.surname}</b> (${u.gender})
+    if(!incomingSnap.empty){
+        const title = document.createElement("div");
+        title.className = "section-title";
+        title.innerText = "Incoming Requests";
+        container.appendChild(title);
+
+        for(let doc of incomingSnap.docs){
+            const data = doc.data();
+            const fromId = data.from;
+            const card = await createCard(fromId, doc.id, true);
+            container.appendChild(card);
+        }
+    }
+
+    // Accepted Requests (Incoming + Sent)
+    const acceptedSnap = await db.collection("chatRequests")
+        .where("status","==","accepted")
+        .get();
+
+    let hasAccepted = false;
+    for(let doc of acceptedSnap.docs){
+        const data = doc.data();
+        const fromId = data.from;
+        const toId = data.to;
+
+        if(fromId===CURRENT.uid || toId===CURRENT.uid){
+            if(!hasAccepted){
+                const title = document.createElement("div");
+                title.className = "section-title";
+                title.innerText = "Chats";
+                container.appendChild(title);
+                hasAccepted = true;
+            }
+            const otherId = fromId===CURRENT.uid ? toId : fromId;
+            const card = await createCard(otherId, doc.id, false);
+            container.appendChild(card);
+        }
+    }
+
+    if(container.innerHTML==="Loading...") container.innerHTML="No requests or chats.";
+}
+
+// Card creator
+async function createCard(userId, requestId, isPending){
+    const userDoc = await db.collection("users").doc(userId).get();
+    const u = userDoc.data();
+
+    const card = document.createElement("div");
+    card.className = "request-card";
+    card.innerHTML = `
+        <img src="${u.photo||'https://i.imgur.com/6VBx3io.png'}">
+        <div style="flex:1">
+            <div class="name">${u.name} ${u.surname}</div>
+            <div style="color:gray">${u.gender}</div>
         </div>
-        <button class="btn accept" onclick="sendRequest('${uid}','${u.gender}')">Chat Request</button>
-      `;
-      list.appendChild(card);
-    });
-  });
+    `;
+
+    if(isPending){
+        const acceptBtn = document.createElement("button");
+        acceptBtn.className = "btn";
+        acceptBtn.innerText = "Accept";
+        acceptBtn.onclick = ()=>acceptRequest(requestId, u.gender, userId);
+        const rejectBtn = document.createElement("button");
+        rejectBtn.className = "btn";
+        rejectBtn.innerText = "Reject";
+        rejectBtn.onclick = ()=>rejectRequest(requestId, card);
+        card.appendChild(acceptBtn);
+        card.appendChild(rejectBtn);
+    } else {
+        const openBtn = document.createElement("button");
+        openBtn.className = "btn";
+        openBtn.innerText = "Open Chat";
+        openBtn.onclick = ()=>openChat(CURRENT.uid, userId);
+        card.appendChild(openBtn);
+    }
+
+    return card;
 }
 
-/* ---------- SEND REQUEST ---------- */
-async function sendRequest(toId, toGender){
-  // Only deduct if CURRENT is Male
-  let meDoc = await db.collection("users").doc(CURRENT.uid).get();
-  let meGender = meDoc.data().gender;
+// Accept Request → wallet logic + redirect
+async function acceptRequest(requestId, fromGender, fromId){
+    const req = await db.collection("chatRequests").doc(requestId).get();
+    if(!req.exists) return;
 
-  if(meGender==="Male"){
-    let wallet = await db.collection("wallet").doc(CURRENT.uid).get();
-    let balance = wallet.exists?wallet.data().balance:0;
-    if(balance<10){ alert("Insufficient balance!"); return; }
-    await db.collection("wallet").doc(CURRENT.uid).update({balance: balance-10});
-    await db.collection("history").add({uid:CURRENT.uid,amount:-10,type:"Chat Request",time:new Date()});
-  }
+    let myId = CURRENT.uid;
+    let paidBy = req.data().paidBy || "Male";
 
-  await db.collection("requests").add({
-    from: CURRENT.uid,
-    to: toId,
-    status: "pending",
-    timestamp: Date.now()
-  });
+    if(paidBy==="Male" && fromGender==="Female"){
+        let wallet = await db.collection("wallet").doc(myId).get();
+        let balance = wallet.exists ? wallet.data().balance : 0;
+        if(balance >= 10){
+            await db.collection("wallet").doc(myId).update({balance: balance - 10});
+            await db.collection("history").add({uid: myId, amount:-10, type:"Chat Request Accepted", time:new Date()});
+        } else { alert("Insufficient balance!"); return; }
+    }
 
-  alert("Request sent!");
+    await db.collection("chatRequests").doc(requestId).update({status:"accepted"});
+
+    const chatID = myId < fromId ? myId+"_"+fromId : fromId+"_"+myId;
+    await db.collection("chats").doc(chatID).set({users:[myId, fromId], lastMsg:"", time:Date.now()});
+
+    location.href = "chat-room.html?id="+chatID;
 }
 
-/* ---------- REQUESTS VIEW ---------- */
-function loadRequestsView(){
-  document.getElementById('userList').style.display='none';
-  const list = document.getElementById('requestList');
-  list.style.display='block';
-  list.innerHTML = "Loading requests...";
-
-  db.collection("requests").where("to","==",CURRENT.uid)
-    .where("status","==","pending")
-    .onSnapshot(async snap=>{
-      list.innerHTML="";
-      for(let doc of snap.docs){
-        let r = doc.data();
-        let fromUser = await db.collection("users").doc(r.from).get();
-        let u = fromUser.data();
-        let card = document.createElement("div");
-        card.className="card";
-        card.innerHTML = `
-          <img src="${u.photo||'https://via.placeholder.com/150'}">
-          <div class="info"><b>${u.name} ${u.surname}</b> wants to chat</div>
-          <button class="btn accept" onclick="acceptRequest('${doc.id}','${r.from}','${u.gender}')">Accept</button>
-          <button class="btn reject" onclick="rejectRequest('${doc.id}')">Reject</button>
-        `;
-        list.appendChild(card);
-      }
-    });
+// Reject request → remove card
+async function rejectRequest(requestId, cardElem){
+    await db.collection("chatRequests").doc(requestId).update({status:"rejected"});
+    cardElem.remove();
 }
 
-/* ---------- ACCEPT REQUEST ---------- */
-async function acceptRequest(docId, fromId, fromGender){
-  // Deduct 10₹ only if FROM is female and CURRENT is male
-  let meDoc = await db.collection("users").doc(CURRENT.uid).get();
-  let meGender = meDoc.data().gender;
-
-  if(fromGender==="Female" && meGender==="Male"){
-    let wallet = await db.collection("wallet").doc(CURRENT.uid).get();
-    let balance = wallet.exists?wallet.data().balance:0;
-    if(balance<10){ alert("Insufficient balance!"); return; }
-    await db.collection("wallet").doc(CURRENT.uid).update({balance: balance-10});
-    await db.collection("history").add({uid:CURRENT.uid,amount:-10,type:"Chat Request Accepted",time:new Date()});
-  }
-
-  await db.collection("requests").doc(docId).update({status:"accepted"});
-
-  const chatID = CURRENT.uid<fromId?CURRENT.uid+"_"+fromId:fromId+"_"+CURRENT.uid;
-  await db.collection("chats").doc(chatID).set({users:[CURRENT.uid,fromId],lastMsg:"",time:Date.now()});
-  loadRequestsView();
-  alert("Request accepted! Opening chat...");
-  location.href = "chat-room.html?id="+chatID;
-}
-
-/* ---------- REJECT REQUEST ---------- */
-async function rejectRequest(docId){
-  await db.collection("requests").doc(docId).update({status:"rejected"});
-  loadRequestsView();
-}
-
-/* ---------- OPEN CHAT BUTTON FOR SENT/ACCEPTED REQUESTS ---------- */
+// Open chat
 function openChat(uid1, uid2){
-  const chatID = uid1<uid2?uid1+"_"+uid2:uid2+"_"+uid1;
-  location.href = "chat-room.html?id="+chatID;
+    const chatID = uid1<uid2 ? uid1+"_"+uid2 : uid2+"_"+uid1;
+    location.href = "chat-room.html?id="+chatID;
 }
 </script>
 </body>
