@@ -32,9 +32,34 @@ body{margin:0;font-family:Arial;background:#fff;color:#333;}
 .accept{background:#28a745}
 .reject{background:#d9534f}
 
-.bottom-nav{position:fixed;bottom:0;width:100%;background:#fff;border-top:1px solid #ddd;display:flex;justify-content:space-around;padding:10px 0;box-shadow:0 -2px 10px rgba(0,0,0,0.1);}
-.bottom-nav div{text-align:center;font-size:14px;color:#ff1493;font-weight:bold;display:flex;flex-direction:column;gap:3px;}
-.icon{font-size:20px;}
+/* ⭐ NEW BOTTOM NAV – Professional & Trusted Look */
+.bottom-nav{
+    position:fixed;
+    bottom:0;
+    width:100%;
+    background:#ffffff;
+    border-top:1px solid #ddd;
+    display:flex;
+    justify-content:space-around;
+    padding:8px 0;
+    box-shadow:0 -3px 12px rgba(0,0,0,0.12);
+}
+.bottom-nav div{
+    text-align:center;
+    font-size:13px;
+    color:#ff1493;
+    font-weight:bold;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+}
+
+/* ⭐ Professional ICONS */
+.icon{
+    font-size:26px;
+    line-height:20px;
+}
+
 </style>
 </head>
 
@@ -59,7 +84,7 @@ Dashboard
 <div class="section-title">Incoming Chat Requests 💬</div>
 <div class="list" id="reqList"></div>
 
-<!-- MATCH / WHO LIKED ME LIST (NOW HIDDEN UNTIL BUTTON CLICKED) -->
+<!-- LIKE SECTION -->
 <div id="likeSection" style="display:none;">
 <div class="section-title">Who Liked Me 💜</div>
 <div class="list" id="likeList"></div>
@@ -69,11 +94,22 @@ Dashboard
 <div class="section-title">Profiles</div>
 <div class="list" id="userList"></div>
 
-<!-- BOTTOM NAV -->
+<!-- ⭐ NEW PROFESSIONAL BOTTOM NAV -->
 <div class="bottom-nav">
-<div onclick="location.href='profile.html'"><span class="icon">👤</span>Profile</div>
-<div onclick="openLikes()"><span class="icon">❤️</span>Match</div>
-<div onclick="loadRequests()"><span class="icon">💬</span>Chat</div>
+    <div onclick="openLikes()">
+        <span class="icon">💜</span>
+        Likes
+    </div>
+
+    <div onclick="loadRequests()">
+        <span class="icon">💬</span>
+        Chat
+    </div>
+
+    <div onclick="location.href='profile.html'">
+        <span class="icon">👤</span>
+        Profile
+    </div>
 </div>
 
 <script>
@@ -230,12 +266,12 @@ async function acceptReq(id, other){
         time:Date.now()
     });
 
-    location.href = "chat.html?id=" + chatID;  // ⭐ OPEN CHAT DIRECTLY
+    location.href = "chat.html?id=" + chatID; 
 }
 
 /* REJECT → REMOVE REQUEST */
 async function rejectReq(id){
-    await db.collection("requests").doc(id).delete(); // ⭐ REMOVE
+    await db.collection("requests").doc(id).delete(); 
     loadRequests();
 }
 
@@ -246,4 +282,4 @@ function viewProfile(uid){
 </script>
 
 </body>
-  </html>
+</html>
