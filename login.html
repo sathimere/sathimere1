@@ -7,6 +7,7 @@
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
   <style>
     body {
@@ -67,14 +68,7 @@
       display: block;
     }
 
-    /* Admin Toggle Button */
-    #adminBtn {
-      background: #222;
-      margin-top: 20px;
-    }
-
-    /* Hidden Boxes */
-    #signupBox, #adminBox { display: none; }
+    #signupBox { display: none; }
   </style>
 </head>
 
@@ -82,7 +76,7 @@
 
 <h2>Sathi Mere – Login</h2>
 
-<!-- USER LOGIN BOX -->
+<!-- USER + ADMIN LOGIN BOX -->
 <div class="box" id="loginBox">
 
   <input type="email" id="email" placeholder="Email">
@@ -96,8 +90,6 @@
   <hr>
 
   <button onclick="loginGoogle()">Login with Google</button>
-
-  <button id="adminBtn" onclick="showAdmin()">Admin Login</button>
 
 </div>
 
@@ -114,23 +106,6 @@
 </div>
 
 
-<!-- ADMIN LOGIN BOX -->
-<div class="box" id="adminBox">
-  <h3>Admin Login</h3>
-
-  <input type="email" id="adminEmail" placeholder="Admin Email">
-  <input type="password" id="adminPass" placeholder="Admin Password">
-
-  <button onclick="adminLogin()">Login as Admin</button>
-  <p class="link" onclick="hideAdmin()">Back to User Login</p>
-
-  <p style="color:gray;font-size:14px;margin-top:10px;">
-    Admin Email: <b>sathimere.admin@gmail.com</b><br>
-    Password: <b>Abhi@631625</b>
-  </p>
-</div>
-
-
 <script>
 /* Firebase Init */
 const firebaseConfig = {
@@ -144,16 +119,37 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
+const db = firebase.firestore();
 
 
-/* USER EMAIL LOGIN */
-function loginEmail() {
-  let email = document.getElementById("email").value;
-  let pass = document.getElementById("password").value;
+/* USER + ADMIN LOGIN */
+async function loginEmail() {
+  let email = document.getElementById("email").value.trim();
+  let pass = document.getElementById("password").value.trim();
 
-  auth.signInWithEmailAndPassword(email, pass)
-    .then(() => window.location = "index.html")
-    .catch(e => alert(e.message));
+  if (!email || !pass) {
+    alert("Please enter email & password");
+    return;
+  }
+
+  try {
+    let adminDoc = await db.collection("admins").doc(email).get();
+
+    if (adminDoc.exists && adminDoc.data().password === pass) {
+      // ---------- ADMIN LOGIN ----------
+      alert("Admin Login Successfully");
+      window.location = "admin.html";
+      return;
+    }
+
+    // ---------- USER LOGIN ----------
+    auth.signInWithEmailAndPassword(email, pass)
+      .then(() => window.location = "index.html")
+      .catch(e => alert(e.message));
+
+  } catch (e) {
+    alert(e.message);
+  }
 }
 
 
@@ -199,28 +195,6 @@ function showSignup() {
 function hideSignup() {
   signupBox.style.display = "none";
   loginBox.style.display = "block";
-}
-
-function showAdmin() {
-  adminBox.style.display = "block";
-  loginBox.style.display = "none";
-}
-function hideAdmin() {
-  adminBox.style.display = "none";
-  loginBox.style.display = "block";
-}
-
-
-/* ADMIN LOGIN (STATIC AUTH) */
-function adminLogin() {
-  let email = document.getElementById("adminEmail").value;
-  let pass  = document.getElementById("adminPass").value;
-
-  if (email === "sathimere.admin@gmail.com" && pass === "Abhi@631625") {
-    window.location = "admin.html";
-  } else {
-    alert("Invalid Admin Credentials");
-  }
 }
 </script>
 
