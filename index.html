@@ -203,14 +203,10 @@ body {
 function openMenu(){ menu.style.width = "260px"; }
 function closeMenu(){ menu.style.width = "0"; }
 
-let CURRENT_USER = null;
-
 /* AUTH CHECK */
 auth.onAuthStateChanged(async (user) => {
     if (!user) return (window.location = "login.html");
-    CURRENT_USER = user;
     loadUsers(user.uid);
-    listenIncomingRequests(user.uid);
 });
 
 /* LOAD USERS */
@@ -220,107 +216,133 @@ async function loadUsers(myId) {
 
     let me = await db.collection("users").doc(myId).get();
     let myGender = me.data().gender;
+
     let opposite = myGender === "Male" ? "Female" : "Male";
 
-    db.collection("users").where("gender","==",opposite)
-      .onSnapshot(snap=>{
+    db.collection("users")
+      .where("gender", "==", opposite)
+      .onSnapshot(snap => {
+
         list.innerHTML = "";
-        snap.forEach(doc=>{
+
+        snap.forEach(doc => {
             let u = doc.data();
             let uid = doc.id;
 
             let card = document.createElement("div");
-            card.className="user-card";
+            card.className = "user-card";
+
             card.innerHTML = `
                 <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
                 <div style="flex:1">
                     <div class="name">${u.name} ${u.surname}</div>
                     <div style="color:gray">${u.gender}</div>
+
                     <button class="btn" onclick="sendLike('${uid}')">💜 Like</button>
+
                     <button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>
+
                     <button id="btn_${uid}" class="btn">✉ Chat Request</button>
                 </div>
             `;
+
             list.appendChild(card);
+
             checkStatus(myId, uid);
-            document.getElementById("btn_" + uid).onclick = ()=> sendRequest(myId, uid, u.gender);
+
+            document.getElementById("btn_" + uid).onclick = () =>
+                sendRequest(myId, uid);
         });
     });
 }
 
 /* LIKE */
-async function sendLike(uid){
+async function sendLike(uid) {
     await db.collection("likes").add({
-        from: CURRENT_USER.uid,
+        from: auth.currentUser.uid,
         to: uid,
         time: Date.now()
     });
+
     alert("Liked!");
 }
 
 /* VIEW PROFILE */
-function viewProfile(uid){
-    window.location="view-profile.html?id="+uid;
+function viewProfile(uid) {
+    window.location = "view-profile.html?id=" + uid;
 }
 
-/* CHECK STATUS */
-async function checkStatus(myId, otherId){
-    let btn = document.getElementById("btn_"+otherId);
-    let doc = await db.collection("chatRequests").doc(myId+"_"+otherId).get();
-    if(doc.exists){
+/* CHECK CHAT REQUEST STATUS */
+async function checkStatus(myId, otherId) {
+    let btn = document.getElementById("btn_" + otherId);
+
+    let doc = await db.collection("chatRequests")
+                      .doc(myId + "_" + otherId)
+                      .get();
+
+    if (doc.exists) {
         let status = doc.data().status;
-        if(status==="pending"){
-            btn.innerText="Request Sent";
-            btn.disabled=true;
+
+        if (status === "pending") {
+            btn.innerText = "Request Sent";
+            btn.disabled = true;
             btn.classList.add("btn-disabled");
         }
-        if(status==="accepted"){
-            btn.innerText="Chat Now";
-            btn.onclick = ()=> window.location="chat-room.html?u="+otherId;
+
+        if (status === "accepted") {
+            btn.innerText = "Chat Now";
+            btn.onclick = () => window.location = "chat-room.html?u=" + otherId;
         }
     }
 }
 
-/* SEND REQUEST WITH WALLET */
-async function sendRequest(myId,toId,toGender){
-    let meDoc = await db.collection("users").doc(myId).get();
-    let wallet = meDoc.data().wallet || 0;
+/* SEND CHAT REQUEST WITH PROPER WALLET DEDUCTION */
+async function sendRequest(myId, toId) {
 
-    if(meDoc.data().gender==="Male"){
-        if(wallet<10){
-            alert("Insufficient balance! Rs 10 required.");
-            return;
-        }
-        await db.collection("users").doc(myId).update({wallet: wallet-10});
+    // GET WALLET BALANCE (CORRECT COLLECTION)
+    let wallet = await db.collection("wallet").doc(myId).get();
+    let balance = wallet.exists ? wallet.data().balance : 0;
+
+    if (balance < 10) {
+        alert("Insufficient balance! Please add money.");
+        return;
     }
 
-    await db.collection("chatRequests").doc(myId+"_"+toId).set({
-        from: myId,
-        to: toId,
-        status:"pending",
-        timestamp: Date.now()
+    // DEDUCT 10 RS
+    await db.collection("wallet").doc(myId).update({
+        balance: balance - 10
     });
-    alert("Chat request sent!");
-    checkStatus(myId,toId);
-}
 
-/* LISTEN INCOMING REQUESTS */
-function listenIncomingRequests(uid){
-    db.collection("chatRequests").where("to","==",uid).onSnapshot(snap=>{
-        snap.docChanges().forEach(change=>{
-            if(change.type==="added"){
-                let data = change.doc.data();
-                alert("New chat request from "+data.from);
-            }
+    // CREATE REQUEST
+    await db.collection("chatRequests")
+        .doc(myId + "_" + toId)
+        .set({
+            from: myId,
+            to: toId,
+            status: "pending",
+            timestamp: Date.now()
         });
+
+    // ADD TO HISTORY
+    await db.collection("history").add({
+        uid: myId,
+        amount: -10,
+        type: "Chat Request",
+        time: new Date()
     });
+
+    alert("Chat request sent! ₹10 deducted.");
+    checkStatus(myId, toId);
 }
 
 /* LOGOUT */
-function logout(){
-    auth.signOut().then(()=> window.location="login.html");
+function logout() {
+    auth.signOut().then(() => {
+        window.location = "login.html";
+    });
 }
 
 </script>
+
 </body>
-    </html>
+</html>
