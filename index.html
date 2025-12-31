@@ -9,6 +9,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
+<script src="firebase.js"></script>
+
 <style>
 body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
 .header { background: #ff1493; padding: 15px; color: white; text-align: center; font-size: 22px; font-weight: bold; position: fixed; top: 0; width: 100%; }
@@ -65,10 +67,9 @@ auth.onAuthStateChanged(async user => {
     if(!user) return window.location="login.html";
     CURRENT_USER = user;
     loadUsers(user.uid);
-    listenIncomingRequests(user.uid);
 });
 
-// Load users of opposite gender
+// Load all opposite gender users
 async function loadUsers(myId){
     const list = document.getElementById("userList");
     list.innerHTML = "Loading...";
@@ -117,7 +118,7 @@ function viewProfile(uid){
     window.location="view-profile.html?id="+uid;
 }
 
-// Check request status
+// Check existing chat requests
 async function checkStatus(myId, otherId){
     let btn = document.getElementById("btn_" + otherId);
     const doc1 = await db.collection("requests").doc(myId+"_"+otherId).get();
@@ -146,17 +147,18 @@ async function checkStatus(myId, otherId){
     }
 }
 
-// Send request
+// Send request and handle wallet deduction
 async function sendRequest(myId, toId){
     const meDoc = await db.collection("users").doc(myId).get();
     const myGender = meDoc.data().gender;
     const wallet = meDoc.data().wallet || 0;
 
-    // Male pays Rs10
+    // Only male pays Rs 10
     if(myGender==="Male" && wallet<10){
         alert("Insufficient balance! Rs 10 required.");
         return;
     }
+
     if(myGender==="Male"){
         await db.collection("users").doc(myId).update({wallet: wallet-10});
     }
@@ -172,32 +174,20 @@ async function sendRequest(myId, toId){
     checkStatus(myId,toId);
 }
 
-// Listen incoming requests for both genders
-function listenIncomingRequests(uid){
-    db.collection("requests").where("to","==",uid)
-      .onSnapshot(snap=>{
-        snap.docChanges().forEach(change=>{
+// Listen for incoming requests to refund if rejected
+db.collection("requests").where("status","==","pending")
+.onSnapshot(snapshot=>{
+    snapshot.docChanges().forEach(async change=>{
+        if(change.type==="removed"){
             const data = change.doc.data();
-            const btn = document.getElementById("btn_" + data.from);
-            if(change.type==="added"){
-                if(btn) { btn.innerText="Incoming Request"; btn.disabled=true; btn.classList.add("btn-disabled"); }
+            const fromDoc = await db.collection("users").doc(data.from).get();
+            if(fromDoc.data().gender==="Male"){
+                const wallet = fromDoc.data().wallet || 0;
+                await db.collection("users").doc(data.from).update({wallet: wallet+10});
             }
-            if(change.type==="modified" && data.status==="accepted"){
-                if(btn) { btn.innerText="Chat Now"; btn.disabled=false; btn.onclick = ()=> window.location="chat-room.html?id="+data.from+"_"+data.to; }
-            }
-            if(change.type==="removed"){
-                // Refund Rs10 if male sender
-                db.collection("users").doc(data.from).get().then(doc=>{
-                    if(doc.data().gender==="Male"){
-                        const wallet = doc.data().wallet || 0;
-                        db.collection("users").doc(data.from).update({wallet: wallet+10});
-                    }
-                });
-                if(btn) { btn.innerText="✉ Chat Request"; btn.disabled=false; btn.classList.remove("btn-disabled"); }
-            }
-        });
-      });
-}
+        }
+    });
+});
 
 function logout(){
     auth.signOut().then(()=> window.location="login.html");
@@ -205,4 +195,4 @@ function logout(){
 </script>
 
 </body>
-</html>
+    </html>
