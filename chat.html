@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SathiMere - Chat</title>
+<title>SathiMere Chat</title>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -10,62 +10,70 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:#ffe6f2;}
+body{margin:0;font-family:Arial;background:#f6f6f6;}
+
 .topbar{
     height:55px;background:#ff4fa5;color:#fff;
-    display:flex;align-items:center;
-    padding:0 15px;font-size:20px;
+    display:flex;align-items:center;gap:10px;
+    padding:0 15px;font-size:18px;
     position:fixed;width:100%;top:0;z-index:10;
 }
-.topbar img{width:35px;height:35px;border-radius:50%;margin-right:10px;}
-.topbar span{flex:1;text-align:center;}
+.topbar img{
+    width:38px;height:38px;border-radius:50%;object-fit:cover;
+}
+.username{font-weight:bold;}
 
 .chat-box{
-    margin-top:65px;margin-bottom:70px;
+    margin-top:65px;margin-bottom:75px;
     padding:10px;
 }
+
 .msg{
-    max-width:75%;padding:10px 14px;border-radius:15px;
-    margin:6px 0;display:inline-block;
-    font-size:15px;
+    max-width:75%;padding:10px 14px;border-radius:18px;
+    margin:6px 0;font-size:15px;line-height:1.4;
 }
 .me{
-    background:#ff4fa5;color:#fff;margin-left:auto;border-bottom-right-radius:0;
+    background:#ff4fa5;color:#fff;
+    margin-left:auto;border-bottom-right-radius:4px;
 }
-.other{
-    background:#fff;color:#333;border-bottom-left-radius:0;
+.them{
+    background:#fff;border:1px solid #ddd;
+    margin-right:auto;border-bottom-left-radius:4px;
 }
 
-.sendBar{
+.bottom{
     position:fixed;bottom:0;width:100%;
-    background:#fff;padding:10px;
-    display:flex;gap:10px;border-top:1px solid #ddd;
+    display:flex;gap:5px;background:#fff;padding:10px;
+    border-top:1px solid #ddd;
 }
-.sendBar input{
-    flex:1;padding:10px;font-size:16px;
-    border-radius:10px;border:1px solid #ccc;
+.input{
+    flex:1;padding:12px;border-radius:20px;
+    border:1px solid #ccc;outline:none;
+    font-size:15px;background:#fafafa;
 }
-.sendBar button{
-    background:#ff1493;color:#fff;border:none;
-    padding:10px 15px;font-size:16px;
-    border-radius:10px;cursor:pointer;
+.send{
+    background:#ff4fa5;color:#fff;border:none;
+    padding:12px 18px;border-radius:20px;font-size:15px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="topbar">
-    <div onclick="history.back()" style="cursor:pointer;font-size:22px;">←</div>
-    <img id="userPhoto" src="">
-    <span id="userName">Chat</span>
+<!-- TOP SECTION -->
+<div class="topbar" id="topBar">
+    <span onclick="history.back()" style="font-size:22px;cursor:pointer;">←</span>
+    <img id="userPhoto">
+    <span class="username" id="userName">Loading...</span>
 </div>
 
+<!-- CHAT AREA -->
 <div class="chat-box" id="chatBox"></div>
 
-<div class="sendBar">
-    <input id="msgInput" placeholder="Type message...">
-    <button onclick="sendMsg()">Send</button>
+<!-- SEND BOX -->
+<div class="bottom">
+    <input id="msgInput" class="input" placeholder="Message..." />
+    <button class="send" onclick="sendMsg()">Send</button>
 </div>
 
 <script>
@@ -83,56 +91,52 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-let CURRENT=null;
-let CHATID="";
-let OTHER_UID="";
+/* GET CHAT ID */
+const urlParams = new URLSearchParams(location.search);
+let chatID = urlParams.get("id");
 
-/* GET CHAT ID FROM URL */
-const params = new URLSearchParams(location.search);
-CHATID = params.get("id");
-
-if(!CHATID){ alert("Chat ID missing!"); }
+let CURRENT = null;
+let OTHER = null;
 
 /* INIT */
-auth.onAuthStateChanged(async user=>{
-    if(!user){ location.href="login.html"; return; }
-    CURRENT = user;
+auth.onAuthStateChanged(async u=>{
+    if(!u){ location.href="login.html"; return; }
+    CURRENT = u.uid;
 
     loadChatHeader();
     loadMessages();
 });
 
-/* LOAD CHAT HEADER USER INFO (NAME + DP) */
+/* LOAD CHAT HEADER (USER PHOTO + NAME) */
 async function loadChatHeader(){
-    let users = CHATID.split("_");
-    OTHER_UID = users[0]===CURRENT.uid ? users[1] : users[0];
+    let parts = chatID.split("_");
+    OTHER = (parts[0] === CURRENT) ? parts[1] : parts[0];
 
-    let u = await db.collection("users").doc(OTHER_UID).get();
-    let d = u.data();
+    let user = await db.collection("users").doc(OTHER).get();
+    let u = user.data();
 
-    userName.innerText = d.name + " " + (d.surname || "");
-    userPhoto.src = d.photo || "https://via.placeholder.com/150";
+    userPhoto.src = u.photo || "https://via.placeholder.com/150";
+    userName.innerText = u.name + " " + (u.surname || "");
 }
 
-/* REAL-TIME MESSAGES */
+/* LOAD MESSAGES REAL TIME */
 function loadMessages(){
-    db.collection("chats").doc(CHATID)
-      .collection("messages")
-      .orderBy("time","asc")
-      .onSnapshot(snapshot=>{
-          chatBox.innerHTML="";
-          snapshot.forEach(doc=>{
-              let m = doc.data();
+    db.collection("messages").doc(chatID)
+    .onSnapshot(doc=>{
+        let d = doc.data();
+        let list = d?.messages || [];
 
-              let div = document.createElement("div");
-              div.className = "msg " + (m.from===CURRENT.uid ? "me" : "other");
-              div.innerText = m.text;
+        chatBox.innerHTML = "";
 
-              chatBox.appendChild(div);
-          });
+        list.forEach(m=>{
+            let div = document.createElement("div");
+            div.className = "msg " + (m.sender === CURRENT ? "me" : "them");
+            div.innerText = m.text;
+            chatBox.appendChild(div);
+        });
 
-          chatBox.scrollTop = chatBox.scrollHeight;
-      });
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
 }
 
 /* SEND MESSAGE */
@@ -140,23 +144,24 @@ async function sendMsg(){
     let text = msgInput.value.trim();
     if(text==="") return;
 
-    await db.collection("chats").doc(CHATID)
-      .collection("messages")
-      .add({
-          text:text,
-          from:CURRENT.uid,
-          to:OTHER_UID,
-          time:Date.now()
-      });
+    let msgObj = {
+        sender: CURRENT,
+        text: text,
+        time: Date.now()
+    };
 
-    await db.collection("chats").doc(CHATID).update({
-        lastMsg:text,
-        time:Date.now()
+    await db.collection("messages").doc(chatID).set({
+        messages: firebase.firestore.FieldValue.arrayUnion(msgObj)
+    }, {merge:true});
+
+    await db.collection("chats").doc(chatID).update({
+        lastMsg: text,
+        time: Date.now()
     });
 
-    msgInput.value="";
+    msgInput.value = "";
 }
 </script>
 
 </body>
-</html>
+    </html>
