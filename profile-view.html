@@ -1,129 +1,128 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Profile View – SathiMere</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profile View</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <style>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<style>
     body {
-      background:#ffe3f1;
-      margin:0;
-      font-family: Arial;
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background: #111;
+        color: #fff;
     }
+
     .container {
-      max-width:450px;
-      margin:auto;
-      padding:15px;
+        padding: 20px;
     }
+
+    .back-btn {
+        background: #ff4db8;
+        padding: 10px 16px;
+        border-radius: 8px;
+        display: inline-block;
+        color: #fff;
+        text-decoration: none;
+        font-size: 14px;
+    }
+
     .card {
-      background:#fff;
-      padding:15px;
-      border-radius:15px;
-      box-shadow:0 3px 8px rgba(0,0,0,0.1);
+        background: #1a1a1a;
+        padding: 20px;
+        border-radius: 14px;
+        margin-top: 20px;
+        box-shadow: 0 0 10px #ff4db850;
     }
-    .photo {
-      width:100%;
-      height:280px;
-      object-fit:cover;
-      border-radius:12px;
+
+    .profile-img {
+        width: 140px;
+        height: 140px;
+        border-radius: 12px;
+        object-fit: cover;
+        border: 3px solid #ff4db8;
+        display: block;
+        margin-bottom: 20px;
     }
-    h2 {
-      margin:10px 0;
-    }
+
     .field {
-      margin:10px 0;
-      padding:10px;
-      background:#ffeaf5;
-      border-radius:10px;
+        margin-bottom: 12px;
+        font-size: 16px;
+        line-height: 22px;
     }
-    .label {
-      font-weight:bold;
-      color:#ff4fa7;
+
+    .field span {
+        font-weight: bold;
+        color: #ff4db8;
     }
-    button {
-      width:100%;
-      padding:12px;
-      background:#ff4fa7;
-      color:white;
-      border:none;
-      border-radius:10px;
-      margin-top:18px;
-      font-size:17px;
-    }
-  </style>
+</style>
 </head>
 <body>
 
 <div class="container">
-  <div class="card">
-    <img id="photo" class="photo" src="https://i.imgur.com/4ZQZ4Zy.png">
 
-    <h2 id="nameAge">Loading...</h2>
+    <a class="back-btn" href="admin.html">⬅ Back</a>
 
-    <div class="field"><span class="label">Gender:</span> <span id="gender"></span></div>
-    <div class="field"><span class="label">Caste:</span> <span id="caste"></span></div>
-    <div class="field"><span class="label">Choice:</span> <span id="choice"></span></div>
-    <div class="field"><span class="label">State:</span> <span id="state"></span></div>
-    <div class="field"><span class="label">City:</span> <span id="location"></span></div>
-    <div class="field"><span class="label">Interest:</span> <span id="interest"></span></div>
-    <div class="field"><span class="label">Bio:</span> <span id="bio"></span></div>
-    <div class="field"><span class="label">Phone:</span> <span id="phone"></span></div>
+    <div class="card">
+        <center>
+            <img id="profileImg" class="profile-img" src="https://via.placeholder.com/140">
+        </center>
 
-    <button onclick="goBack()">⬅ Back</button>
-  </div>
+        <div class="field"><span>Name:</span> <span id="name"></span></div>
+        <div class="field"><span>Email:</span> <span id="email"></span></div>
+        <div class="field"><span>Gender:</span> <span id="gender"></span></div>
+        <div class="field"><span>Age:</span> <span id="age"></span></div>
+        <div class="field"><span>City:</span> <span id="city"></span></div>
+        <div class="field"><span>Looking For:</span> <span id="looking"></span></div>
+        <div class="field"><span>About:</span> <span id="about"></span></div>
+        <div class="field"><span>Wallet:</span> ₹ <span id="wallet"></span></div>
+        <div class="field"><span>Verification:</span> <span id="verify"></span></div>
+    </div>
+
 </div>
 
-
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
-  authDomain: "sathimere-415fa.firebaseapp.com",
-  databaseURL: "https://sathimere-415fa-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "sathimere-415fa",
-  storageBucket: "sathimere-415fa.firebasestorage.app",
-  messagingSenderId: "290492321074",
-  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
-};
+    // Firebase config — same as your project
+    const firebaseConfig = {
+        apiKey: "YOUR_KEY",
+        authDomain: "YOUR_DOMAIN",
+        projectId: "YOUR_PROJECTID",
+    };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-function getID() {
-  const params = new URLSearchParams(location.search);
-  return params.get("id");
-}
+    // Get userId from URL
+    const params = new URLSearchParams(window.location.search);
+    const userId = params.get("id");
 
-function loadProfile() {
-  let id = getID();
-  if (!id) return;
+    if (!userId) {
+        alert("User not found!");
+    } else {
+        db.collection("users").doc(userId).get().then(doc => {
+            if (!doc.exists) {
+                alert("Profile not found!");
+                return;
+            }
 
-  db.ref("users/" + id).once("value").then(snap => {
-    const d = snap.val();
-    if (!d) return;
+            const d = doc.data();
 
-    document.getElementById("photo").src = d.photo || "https://i.imgur.com/4ZQZ4Zy.png";
-    document.getElementById("nameAge").innerHTML = `${d.name || ""}, ${d.age || ""}`;
-    document.getElementById("gender").innerText = d.gender || "-";
-    document.getElementById("caste").innerText = d.caste || "-";
-    document.getElementById("choice").innerText = d.choice || "-";
-    document.getElementById("state").innerText = d.state || "-";
-    document.getElementById("location").innerText = d.location || "-";
-    document.getElementById("interest").innerText = d.interest || "-";
-    document.getElementById("bio").innerText = d.bio || "-";
-    document.getElementById("phone").innerText = d.phonePublic ? (d.phone || "Hidden") : "Hidden by user";
-  });
-}
-
-loadProfile();
-
-function goBack() {
-  history.back();
-}
+            document.getElementById("profileImg").src = d.photo || "https://via.placeholder.com/140";
+            document.getElementById("name").innerText = d.name || "N/A";
+            document.getElementById("email").innerText = d.email || "N/A";
+            document.getElementById("gender").innerText = d.gender || "N/A";
+            document.getElementById("age").innerText = d.age || "N/A";
+            document.getElementById("city").innerText = d.city || "N/A";
+            document.getElementById("looking").innerText = d.lookingFor || "N/A";
+            document.getElementById("about").innerText = d.about || "N/A";
+            document.getElementById("wallet").innerText = d.wallet || 0;
+            document.getElementById("verify").innerText = d.verified ? "Verified" : "Pending";
+        });
+    }
 </script>
 
 </body>
