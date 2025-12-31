@@ -9,8 +9,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-<script src="firebase.js"></script>
-
 <style>
 body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
 .header { background: #ff1493; padding: 15px; color: white; text-align: center; font-size: 22px; font-weight: bold; position: fixed; top: 0; width: 100%; }
@@ -63,13 +61,15 @@ function closeMenu(){ menu.style.width = "0"; }
 
 let CURRENT_USER = null;
 
-auth.onAuthStateChanged(async (user) => {
+auth.onAuthStateChanged(async user => {
     if(!user) return window.location="login.html";
     CURRENT_USER = user;
     loadUsers(user.uid);
+    listenIncomingRequests(user.uid);
 });
 
-async function loadUsers(myId) {
+// Load users of opposite gender
+async function loadUsers(myId){
     const list = document.getElementById("userList");
     list.innerHTML = "Loading...";
 
@@ -81,8 +81,8 @@ async function loadUsers(myId) {
       .onSnapshot(snap=>{
         list.innerHTML="";
         snap.forEach(doc=>{
-            let u = doc.data();
-            let uid = doc.id;
+            const u = doc.data();
+            const uid = doc.id;
 
             let card = document.createElement("div");
             card.className="user-card";
@@ -98,13 +98,13 @@ async function loadUsers(myId) {
             `;
             list.appendChild(card);
 
-            checkStatus(myId, uid, u.gender);
-            document.getElementById("btn_" + uid).onclick = ()=> sendRequest(myId, uid, u.gender);
+            checkStatus(myId, uid);
+            document.getElementById("btn_" + uid).onclick = ()=> sendRequest(myId, uid);
         });
     });
 }
 
-async function sendLike(uid) {
+async function sendLike(uid){
     await db.collection("likes").add({
         from: CURRENT_USER.uid,
         to: uid,
@@ -117,52 +117,92 @@ function viewProfile(uid){
     window.location="view-profile.html?id="+uid;
 }
 
-async function checkStatus(myId, otherId, gender){
+// Check request status
+async function checkStatus(myId, otherId){
     let btn = document.getElementById("btn_" + otherId);
-    let doc = await db.collection("chatRequests").doc(myId+"_"+otherId).get();
-    if(doc.exists){
-        let status = doc.data().status;
-        if(status==="pending"){
-            btn.innerText="Request Sent";
-            btn.disabled=true;
-            btn.classList.add("btn-disabled");
-        }
-        if(status==="accepted"){
-            btn.innerText="Chat Now";
-            btn.onclick = ()=> window.location="chat-room.html?u="+otherId;
-        }
+    const doc1 = await db.collection("requests").doc(myId+"_"+otherId).get();
+    const doc2 = await db.collection("requests").doc(otherId+"_"+myId).get();
+
+    if(doc1.exists && doc1.data().status==="pending"){
+        btn.innerText="Request Sent";
+        btn.disabled=true;
+        btn.classList.add("btn-disabled");
+    }
+
+    if(doc1.exists && doc1.data().status==="accepted"){
+        btn.innerText="Chat Now";
+        btn.onclick = ()=> window.location="chat-room.html?id="+myId+"_"+otherId;
+    }
+
+    if(doc2.exists && doc2.data().status==="pending"){
+        btn.innerText="Incoming Request";
+        btn.disabled=true;
+        btn.classList.add("btn-disabled");
+    }
+
+    if(doc2.exists && doc2.data().status==="accepted"){
+        btn.innerText="Chat Now";
+        btn.onclick = ()=> window.location="chat-room.html?id="+myId+"_"+otherId;
     }
 }
 
-async function sendRequest(myId,toId,toGender){
-    // Male user pays Rs 10
-    let maleDoc = await db.collection("users").doc(myId).get();
-    let wallet = Number(maleDoc.data().wallet || 0);
+// Send request
+async function sendRequest(myId, toId){
+    const meDoc = await db.collection("users").doc(myId).get();
+    const myGender = meDoc.data().gender;
+    const wallet = meDoc.data().wallet || 0;
 
-    if(maleDoc.data().gender === "Male"){
-        if(wallet<10){
-            alert("Insufficient balance! Rs 10 required.");
-            return;
-        }
+    // Male pays Rs10
+    if(myGender==="Male" && wallet<10){
+        alert("Insufficient balance! Rs 10 required.");
+        return;
+    }
+    if(myGender==="Male"){
         await db.collection("users").doc(myId).update({wallet: wallet-10});
     }
 
-    // Create request
-    await db.collection("chatRequests").doc(myId+"_"+toId).set({
+    await db.collection("requests").doc(myId+"_"+toId).set({
         from: myId,
         to: toId,
         status:"pending",
         timestamp: Date.now()
     });
 
-    alert("Chat request sent!");
-    checkStatus(myId,toId,toGender);
+    alert("Chat request sent! Rs 10 deducted if male.");
+    checkStatus(myId,toId);
 }
 
-/* LOGOUT */
+// Listen incoming requests for both genders
+function listenIncomingRequests(uid){
+    db.collection("requests").where("to","==",uid)
+      .onSnapshot(snap=>{
+        snap.docChanges().forEach(change=>{
+            const data = change.doc.data();
+            const btn = document.getElementById("btn_" + data.from);
+            if(change.type==="added"){
+                if(btn) { btn.innerText="Incoming Request"; btn.disabled=true; btn.classList.add("btn-disabled"); }
+            }
+            if(change.type==="modified" && data.status==="accepted"){
+                if(btn) { btn.innerText="Chat Now"; btn.disabled=false; btn.onclick = ()=> window.location="chat-room.html?id="+data.from+"_"+data.to; }
+            }
+            if(change.type==="removed"){
+                // Refund Rs10 if male sender
+                db.collection("users").doc(data.from).get().then(doc=>{
+                    if(doc.data().gender==="Male"){
+                        const wallet = doc.data().wallet || 0;
+                        db.collection("users").doc(data.from).update({wallet: wallet+10});
+                    }
+                });
+                if(btn) { btn.innerText="✉ Chat Request"; btn.disabled=false; btn.classList.remove("btn-disabled"); }
+            }
+        });
+      });
+}
+
 function logout(){
     auth.signOut().then(()=> window.location="login.html");
 }
 </script>
+
 </body>
 </html>
