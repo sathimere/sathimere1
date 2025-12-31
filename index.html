@@ -54,12 +54,10 @@ body{margin:0;font-family:Arial;background:#fff;color:#333;}
     gap:4px;
 }
 
-/* ⭐ Professional ICONS */
 .icon{
     font-size:26px;
     line-height:20px;
 }
-
 </style>
 </head>
 
@@ -94,8 +92,9 @@ Dashboard
 <div class="section-title">Profiles</div>
 <div class="list" id="userList"></div>
 
-<!-- ⭐ NEW PROFESSIONAL BOTTOM NAV -->
+<!-- ⭐ NEW PROFESSIONAL BOTTOM NAV (UPDATED) -->
 <div class="bottom-nav">
+
     <div onclick="openLikes()">
         <span class="icon">💜</span>
         Likes
@@ -103,13 +102,19 @@ Dashboard
 
     <div onclick="loadRequests()">
         <span class="icon">💬</span>
-        Chat
+        Chat Req
+    </div>
+
+    <div onclick="location.href='chat.html'">
+        <span class="icon">✉️</span>
+        Messages
     </div>
 
     <div onclick="location.href='profile.html'">
         <span class="icon">👤</span>
         Profile
     </div>
+
 </div>
 
 <script>
@@ -129,7 +134,6 @@ const auth = firebase.auth();
 
 let CURRENT = null;
 
-/* MENU */
 function openMenu(){ menu.style.width="250px"; }
 function closeMenu(){ menu.style.width="0"; }
 function logout(){ auth.signOut().then(()=>location.href="login.html"); }
@@ -148,7 +152,7 @@ function openLikes(){
     loadLikes();
 }
 
-/* LOAD OPPOSITE PROFILES */
+/* LOAD USERS */
 async function loadUsers(){
     let list=userList; list.innerHTML="";
 
@@ -189,7 +193,7 @@ async function sendLike(uid){
     loadLikes();
 }
 
-/* SEND CHAT REQUEST */
+/* SEND REQUEST */
 async function sendRequest(uid){
     await db.collection("requests").add({
         from: CURRENT.uid,
@@ -201,7 +205,7 @@ async function sendRequest(uid){
     loadRequests();
 }
 
-/* WHO LIKED ME */
+/* LIKES */
 async function loadLikes(){
     let list=likeList; list.innerHTML="";
 
@@ -225,7 +229,7 @@ async function loadLikes(){
     }
 }
 
-/* LOAD CHAT REQUESTS */
+/* REQUESTS */
 async function loadRequests(){
     let list=reqList; list.innerHTML="";
 
@@ -253,7 +257,7 @@ async function loadRequests(){
     }
 }
 
-/* ACCEPT REQUEST → OPEN CHAT PAGE */
+/* ACCEPT → CREATE CHAT */
 async function acceptReq(id, other){
     await db.collection("requests").doc(id).update({status:"accepted"});
 
@@ -269,17 +273,15 @@ async function acceptReq(id, other){
     location.href = "chat.html?id=" + chatID; 
 }
 
-/* REJECT → REMOVE REQUEST */
 async function rejectReq(id){
     await db.collection("requests").doc(id).delete(); 
     loadRequests();
 }
 
-/* VIEW PROFILE */
 function viewProfile(uid){
     location.href="profile-view.html?id="+uid;
 }
 </script>
 
 </body>
-</html>
+    </html>
