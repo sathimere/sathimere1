@@ -1,264 +1,221 @@
 <!DOCTYPE html>
 <html>
 <head>
+<title>Sathi Mere - Home</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SathiMere - Dashboard</title>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
+<script src="firebase.js"></script>
+
 <style>
-body{margin:0;font-family:Arial;background:#fff;color:#333;}
-.topbar{height:55px;background:#ff4fa5;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 15px;font-size:20px;position:fixed;width:100%;top:0;z-index:10;}
-.topbar span:first-child{position:absolute;left:15px;}
-.topbar span:last-child{position:absolute;right:15px;}
-
-#menu{width:0;height:100%;position:fixed;top:0;left:0;background:#fff;overflow-x:hidden;transition:0.3s;padding-top:60px;box-shadow:3px 0 10px rgba(0,0,0,0.2);z-index:20;}
-#menu a{padding:12px 20px;display:block;font-size:18px;color:#333;text-decoration:none;}
-#menu a:hover{background:#ffe0f1;}
-.closebtn{position:absolute;top:10px;right:10px;font-size:30px;}
-
-.section-title{text-align:center;color:#ff1493;font-size:20px;margin-top:70px;margin-bottom:10px;font-weight:bold;}
-
-.search-box{
-    padding:10px;
-    margin-top:60px;
-}
-.search-box input{
-    width:90%;
-    padding:12px;
-    border-radius:25px;
-    border:1px solid #ccc;
-    font-size:16px;
-    display:block;
-    margin:auto;
-    outline:none;
+body {
+    font-family: Arial;
+    background: #ffe4f0;
+    margin: 0;
+    padding: 0;
 }
 
-.list{padding:10px;margin-bottom:80px;}
-.card{background:#fff;border-radius:15px;box-shadow:0 4px 12px rgba(0,0,0,0.1);margin-bottom:15px;overflow:hidden;}
-.row{display:flex;align-items:center;}
-.row img{width:90px;height:90px;object-fit:cover;border-radius:10px;margin:10px;}
-.info{flex:1;padding:10px;font-size:16px;}
-.btn{background:#ff1493;color:#fff;padding:8px 12px;margin:4px;border:none;border-radius:8px;cursor:pointer;font-size:15px;}
-
-.accept{background:#28a745}
-.reject{background:#d9534f}
-
-/* ⭐ BOTTOM NAV (3 BUTTONS) */
-.bottom-nav{
-    position:fixed;
-    bottom:0;
-    width:100%;
-    background:#ffffff;
-    border-top:1px solid #ddd;
-    display:flex;
-    justify-content:space-around;
-    padding:8px 0;
-    box-shadow:0 -3px 12px rgba(0,0,0,0.12);
-}
-.bottom-nav div{
-    text-align:center;
-    font-size:13px;
-    color:#ff1493;
-    font-weight:bold;
-    display:flex;
-    flex-direction:column;
-    gap:4px;
-}
-.icon{
-    font-size:26px;
-    line-height:20px;
+.header {
+    background: #ff1493;
+    padding: 15px;
+    text-align: center;
+    color: white;
+    font-size: 22px;
+    font-weight: bold;
 }
 
-/* Chat Request section hidden (logic working) */
-#reqList { display:none; }
+.container {
+    padding: 15px;
+}
+
+.user-card {
+    background: white;
+    margin-bottom: 15px;
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 0 10px #ffc0d9;
+    display: flex;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.user-card img {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 15px;
+    border: 3px solid #ff1493;
+}
+
+.user-info {
+    flex: 1;
+}
+
+.name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ff1493;
+}
+
+.btn {
+    padding: 8px 14px;
+    border: none;
+    color: white;
+    background: #ff1493;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.btn-disabled {
+    background: gray;
+}
+
+@keyframes fadeIn {
+    from {opacity: 0; transform: translateY(10px);}
+    to {opacity: 1; transform: translateY(0);}
+}
+
+.logout {
+    position: fixed;
+    right: 15px;
+    top: 12px;
+    background: white;
+    color: #ff1493;
+    border: 2px solid #ff1493;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+}
 </style>
 </head>
 
 <body>
 
-<div class="topbar">
-<span onclick="openMenu()">☰</span>
-Dashboard
-<span onclick="logout()">⏻</span>
-</div>
+<div class="header">Sathi Mere</div>
+<button class="logout" onclick="logout()">Logout</button>
 
-<!-- SEARCH -->
-<div class="search-box">
-    <input type="text" id="searchInput" placeholder="Search profiles..." onkeyup="filterProfiles()">
-</div>
-
-<!-- MENU -->
-<div id="menu">
-    <a class="closebtn" onclick="closeMenu()">✖</a>
-    <a href="profile.html">My Profile</a>
-    <a href="wallet.html">Wallet</a>
-    <a href="help.html">Help & Support</a>
-    <a onclick="logout()">Logout</a>
-</div>
-
-<!-- CHAT REQUESTS (HIDDEN FROM UI) -->
-<div id="reqList"></div>
-
-<!-- PROFILES -->
-<div class="section-title">Profiles</div>
-<div class="list" id="userList"></div>
-
-<!-- ⭐ NEW BOTTOM NAV (3 BUTTONS ONLY) -->
-<div class="bottom-nav">
-
-    <div onclick="location.href='like.html'">
-        <span class="icon">💜</span>
-        Likes
-    </div>
-
-    <div onclick="location.href='chat.html'">
-        <span class="icon">✉️</span>
-        Messages
-    </div>
-
-    <div onclick="location.href='profile.html'">
-        <span class="icon">👤</span>
-        Profile
-    </div>
-
-</div>
-
+<div class="container" id="userList">Loading profiles...</div>
 
 <script>
-/* Firebase */
-const firebaseConfig = {
-  apiKey: "AIzaSyCNujpIBIvJXMk34YQF1VeuTVFi5M7vdc0",
-  authDomain: "sathimere-415fa.firebaseapp.com",
-  projectId: "sathimere-415fa",
-  storageBucket: "sathimere-415fa.firebasestorage.app",
-  messagingSenderId: "290492321074",
-  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
-};
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
+// ----------------------
+// AUTH CHECK (No Redirect Bug)
+// ----------------------
+auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+        console.log("Not logged in → staying on login page");
+        window.location = "login.html";
+        return;
+    }
 
-let CURRENT=null;
-let ALL_USERS=[];
-
-function openMenu(){ menu.style.width="250px"; }
-function closeMenu(){ menu.style.width="0"; }
-function logout(){ auth.signOut().then(()=>location.href="login.html"); }
-
-/* INIT */
-auth.onAuthStateChanged(async u=>{
-    if(!u){ location.href="login.html"; return; }
-    CURRENT=u;
-    loadUsers();
-    loadRequests();
+    loadUsers(user.uid);
 });
 
-/* LOAD USERS */
-async function loadUsers(){
-    let list=userList; list.innerHTML="";
 
-    let me=await db.collection("users").doc(CURRENT.uid).get();
-    let myGender=me.data().gender||"Male";
-    let target = myGender==="Male" ? "Female" : "Male";
+// ----------------------
+// LOAD ALL USERS
+// ----------------------
+async function loadUsers(myId) {
+    const list = document.getElementById("userList");
+    list.innerHTML = "Loading profiles...";
 
-    let q=await db.collection("users").where("gender","==",target).get();
+    db.collection("users").onSnapshot(async snap => {
+        list.innerHTML = "";
 
-    ALL_USERS=[];
+        snap.forEach(doc => {
+            let u = doc.data();
+            let uid = doc.id;
 
-    q.forEach(doc=>{
-        let u=doc.data();
-        u.id=doc.id;
+            if (uid === myId) return; // skip self
 
-        ALL_USERS.push(u);
-    });
+            let card = document.createElement("div");
+            card.className = "user-card";
 
-    renderProfiles(ALL_USERS);
-}
+            card.innerHTML = `
+                <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
+                <div class="user-info">
+                    <div class="name">${u.name} ${u.surname}</div>
+                    <div style="color:gray;font-size:14px;">${u.gender}</div>
+                </div>
+                <button id="btn_${uid}" class="btn">Chat Request</button>
+            `;
 
-/* RENDER USERS */
-function renderProfiles(data){
-    userList.innerHTML="";
-    data.forEach(u=>{
-        let card=document.createElement("div");
-        card.className="card";
-        card.innerHTML=`
-        <div class="row">
-            <img src="${u.photo||'https://via.placeholder.com/150'}">
-            <div class="info">
-                <b>${u.name} ${u.surname}</b><br>
-                Age: ${u.age||'-'}<br>
-                <button class="btn" onclick="sendLike('${u.id}')">💜 Like</button>
-                <button class="btn" onclick="sendRequest('${u.id}')">Chat Request</button>
-                <button class="btn" onclick="viewProfile('${u.id}')">View Profile</button>
-            </div>
-        </div>`;
-        userList.appendChild(card);
+            list.appendChild(card);
+
+            checkChatStatus(myId, uid); // update button based on request status
+
+            document.getElementById("btn_" + uid).onclick = () => {
+                sendRequest(myId, uid, u);
+            };
+        });
     });
 }
 
-/* SEARCH FILTER */
-function filterProfiles(){
-    let txt = searchInput.value.toLowerCase();
-    let filtered = ALL_USERS.filter(u =>
-        (u.name+" "+u.surname).toLowerCase().includes(txt)
-    );
-    renderProfiles(filtered);
-}
 
-/* SEND LIKE */
-async function sendLike(uid){
-    await db.collection("likes").add({
-        from: CURRENT.uid,
-        to: uid,
-        time: Date.now()
-    });
-    alert("Liked!");
-}
 
-/* SEND REQUEST */
-async function sendRequest(uid){
-    await db.collection("requests").add({
-        from: CURRENT.uid,
-        to: uid,
-        status: "pending",
-        time: Date.now()
-    });
-    alert("Request Sent!");
-}
+// ----------------------
+// CHECK IF REQUEST ALREADY SENT / ACCEPTED
+// ----------------------
+async function checkChatStatus(myId, otherId) {
+    let btn = document.getElementById("btn_" + otherId);
 
-/* LOAD REQUESTS (LOGIC ACTIVE BUT HIDDEN UI) */
-async function loadRequests(){
-    let q=await db.collection("requests").where("to","==",CURRENT.uid).get();
+    const req = await db.collection("chatRequests")
+        .doc(myId + "_" + otherId)
+        .get();
 
-    for(let d of q.docs){
-        let r=d.data();
+    if (req.exists) {
+        let status = req.data().status;
+
+        if (status === "pending") {
+            btn.innerText = "Request Sent";
+            btn.classList.add("btn-disabled");
+            btn.disabled = true;
+        }
+
+        if (status === "accepted") {
+            btn.innerText = "Chat Now";
+            btn.onclick = () => window.location = "chat-room.html?u=" + otherId;
+        }
     }
 }
 
-/* ACCEPT */
-async function acceptReq(id, other){
-    await db.collection("requests").doc(id).update({status:"accepted"});
 
-    let chatID = CURRENT.uid < other ?
-                 CURRENT.uid+"_"+other : other+"_"+CURRENT.uid;
 
-    await db.collection("chats").doc(chatID).set({
-        users:[CURRENT.uid,other],
-        lastMsg:"",
-        time:Date.now()
+// ----------------------
+// SEND CHAT REQUEST
+// ----------------------
+async function sendRequest(myId, otherId, u) {
+    await db.collection("chatRequests")
+        .doc(myId + "_" + otherId)
+        .set({
+            from: myId,
+            to: otherId,
+            status: "pending",
+            timestamp: Date.now()
+        });
+
+    alert("Chat request sent to " + u.name);
+    checkChatStatus(myId, otherId);
+}
+
+
+
+// ----------------------
+// LOGOUT
+// ----------------------
+function logout() {
+    auth.signOut().then(() => {
+        window.location = "login.html";
     });
-
-    location.href="chat.html?id="+chatID;
 }
 
-function viewProfile(uid){
-    location.href="profile-view.html?id="+uid;
-}
 </script>
 
 </body>
