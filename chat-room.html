@@ -13,7 +13,7 @@
 body{margin:0;font-family:Arial,sans-serif;background:#f2f2f2;}
 .topbar{height:55px;background:#ff4fa5;color:#fff;display:flex;align-items:center;justify-content:center;position:fixed;width:100%;top:0;z-index:10;font-size:20px;}
 .topbar span:first-child{position:absolute;left:15px;cursor:pointer;}
-.topbar span:last-child{position:absolute;right:15px;cursor:pointer;}
+.topbar span:last-child{position:absolute;right:15px;cursor:pointer;background:#fff;color:#ff1493;padding:6px 12px;border-radius:12px;font-weight:bold;font-size:14px;}
 .chat-container{margin-top:65px;margin-bottom:70px;padding:10px;display:flex;flex-direction:column;gap:8px;}
 .message{padding:10px 14px;border-radius:15px;max-width:75%;position:relative;display:inline-block;}
 .sent{background:#ff1493;color:#fff;align-self:flex-end;border-bottom-right-radius:2px;}
@@ -22,13 +22,14 @@ body{margin:0;font-family:Arial,sans-serif;background:#f2f2f2;}
 .input-container{position:fixed;bottom:0;width:100%;display:flex;padding:8px;background:#fff;box-shadow:0 -2px 6px rgba(0,0,0,0.1);}
 .input-container input{flex:1;padding:10px;border-radius:20px;border:1px solid #ccc;outline:none;font-size:16px;}
 .input-container button{padding:10px 16px;margin-left:6px;border:none;border-radius:20px;background:#ff1493;color:#fff;font-weight:bold;cursor:pointer;}
+.blocked-msg{color:#ff0000;font-size:14px;text-align:center;margin-top:20px;}
 </style>
 </head>
 
 <body>
 <div class="topbar">
 <span onclick="goBack()">←</span>Chat Room
-<span onclick="logout()">⏻</span>
+<span id="blockBtn" onclick="toggleBlock()">Block</span>
 </div>
 
 <div class="chat-container" id="chatContainer"></div>
@@ -53,9 +54,11 @@ const auth = firebase.auth();
 
 let CURRENT = null;
 let CHAT_ID = null;
+let OTHER_UID = null;
+let isBlocked = false;
+let unsubscribe = null;
 
-/* MENU & LOGOUT */
-function logout(){ auth.signOut().then(()=>location.href="login.html"); }
+/* MENU & NAV */
 function goBack(){ window.history.back(); }
 
 /* GET CHAT ID FROM URL */
@@ -65,40 +68,85 @@ CHAT_ID = params.get('id');
 auth.onAuthStateChanged(async u=>{
     if(!u){ location.href="login.html"; return; }
     CURRENT = u;
-    loadMessages();
+    await initChat();
 });
+
+/* INIT CHAT */
+async function initChat(){
+    const chatDoc = await db.collection('chats').doc(CHAT_ID).get();
+    const chatData = chatDoc.data();
+    OTHER_UID = chatData.users.find(uid => uid!==CURRENT.uid);
+
+    // Check block status
+    const blockDoc = await db.collection('blocks').doc(CURRENT.uid).get();
+    const blockedUsers = blockDoc.exists ? blockDoc.data().blocked || [] : [];
+    isBlocked = blockedUsers.includes(OTHER_UID);
+    updateBlockButton();
+
+    loadMessages();
+}
+
+/* UPDATE BLOCK BUTTON TEXT */
+function updateBlockButton(){
+    document.getElementById('blockBtn').innerText = isBlocked ? "Unblock" : "Block";
+}
+
+/* TOGGLE BLOCK */
+async function toggleBlock(){
+    const blockRef = db.collection('blocks').doc(CURRENT.uid);
+    const doc = await blockRef.get();
+    let blockedUsers = doc.exists ? doc.data().blocked || [] : [];
+
+    if(isBlocked){
+        // Unblock
+        blockedUsers = blockedUsers.filter(uid => uid!==OTHER_UID);
+        isBlocked = false;
+    } else {
+        // Block
+        if(!blockedUsers.includes(OTHER_UID)) blockedUsers.push(OTHER_UID);
+        isBlocked = true;
+    }
+    await blockRef.set({blocked: blockedUsers});
+    updateBlockButton();
+    loadMessages(); // reload messages
+}
 
 /* REAL-TIME MESSAGE LISTENER */
 function loadMessages(){
+    if(unsubscribe) unsubscribe(); // detach previous listener
     const container = document.getElementById('chatContainer');
-    db.collection('chats').doc(CHAT_ID).collection('messages')
-      .orderBy('time')
-      .onSnapshot(snapshot=>{
-        container.innerHTML="";
-        snapshot.forEach(doc=>{
-            const m = doc.data();
-            const div = document.createElement('div');
-            div.className = "message " + (m.from===CURRENT.uid ? "sent":"received");
-            div.innerHTML = `<div class="sender-info">${m.from===CURRENT.uid ? 'You':m.name}</div>${m.msg}`;
-            container.appendChild(div);
+    container.innerHTML = "";
+
+    if(isBlocked){
+        const div = document.createElement('div');
+        div.className = "blocked-msg";
+        div.innerText = "You have blocked this user. Messages will not appear.";
+        container.appendChild(div);
+        return;
+    }
+
+    unsubscribe = db.collection('chats').doc(CHAT_ID).collection('messages')
+        .orderBy('time')
+        .onSnapshot(snapshot=>{
+            container.innerHTML="";
+            snapshot.forEach(doc=>{
+                const m = doc.data();
+                const div = document.createElement('div');
+                div.className = "message " + (m.from===CURRENT.uid ? "sent":"received");
+                div.innerHTML = `<div class="sender-info">${m.from===CURRENT.uid ? 'You':m.name}</div>${m.msg}`;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
         });
-        container.scrollTop = container.scrollHeight;
-    });
 }
 
 /* SEND MESSAGE */
 async function sendMessage(){
+    if(isBlocked) return; // cannot send if blocked
     const input = document.getElementById('msgInput');
     const msg = input.value.trim();
     if(!msg) return;
     input.value = "";
-    
-    // Get other user name for display
-    const chatDoc = await db.collection('chats').doc(CHAT_ID).get();
-    const chatData = chatDoc.data();
-    const otherUID = chatData.users.find(uid => uid!==CURRENT.uid);
-    const otherDoc = await db.collection('users').doc(otherUID).get();
-    const otherData = otherDoc.data();
 
     await db.collection('chats').doc(CHAT_ID).collection('messages').add({
         from: CURRENT.uid,
