@@ -20,7 +20,6 @@ body{margin:0;font-family:Arial;background:#fff;color:#333;}
 #menu a:hover{background:#ffe0f1;}
 .closebtn{position:absolute;top:10px;right:10px;font-size:30px;}
 
-/* HIDE CHAT REQUEST SECTION */
 #reqSection{ display:none; }
 
 .section-title{text-align:center;color:#ff1493;font-size:20px;margin-top:70px;margin-bottom:10px;font-weight:bold;}
@@ -31,10 +30,7 @@ body{margin:0;font-family:Arial;background:#fff;color:#333;}
 .row img{width:90px;height:90px;object-fit:cover;border-radius:10px;margin:10px;}
 .info{flex:1;padding:10px;font-size:16px;}
 .btn{background:#ff1493;color:#fff;padding:8px 12px;margin:4px;border:none;border-radius:8px;cursor:pointer;font-size:15px;}
-.accept{background:#28a745}
-.reject{background:#d9534f}
 
-/* SEARCH BOX */
 .search-box{
     margin-top:60px;
     padding:10px;
@@ -50,7 +46,6 @@ body{margin:0;font-family:Arial;background:#fff;color:#333;}
     outline:none;
 }
 
-/* ⭐ BOTTOM NAV – 3 BUTTONS */
 .bottom-nav{
     position:fixed;
     bottom:0;
@@ -71,7 +66,6 @@ body{margin:0;font-family:Arial;background:#fff;color:#333;}
     flex-direction:column;
     gap:4px;
 }
-
 .icon{ font-size:26px; line-height:20px; }
 </style>
 </head>
@@ -84,7 +78,6 @@ Dashboard
 <span onclick="logout()">⏻</span>
 </div>
 
-<!-- SIDE MENU -->
 <div id="menu">
 <a class="closebtn" onclick="closeMenu()">✖</a>
 <a href="profile.html">My Profile</a>
@@ -93,39 +86,22 @@ Dashboard
 <a onclick="logout()">Logout</a>
 </div>
 
-<!-- SEARCH BOX -->
 <div class="search-box">
     <input type="text" id="searchInput" placeholder="Search profiles..." onkeyup="filterProfiles()">
 </div>
 
-<!-- HIDDEN CHAT REQUEST SECTION (logic active only) -->
 <div id="reqSection">
 <div class="section-title">Incoming Chat Requests 💬</div>
 <div class="list" id="reqList"></div>
 </div>
 
-<!-- PROFILE LIST -->
 <div class="section-title">Profiles</div>
 <div class="list" id="userList"></div>
 
-<!-- ⭐ NEW BOTTOM NAV -->
 <div class="bottom-nav">
-
-    <div onclick="location.href='like.html'">
-        <span class="icon">💜</span>
-        Likes
-    </div>
-
-    <div onclick="location.href='chat.html'">
-        <span class="icon">✉️</span>
-        Messages
-    </div>
-
-    <div onclick="location.href='profile.html'">
-        <span class="icon">👤</span>
-        Profile
-    </div>
-
+    <div onclick="location.href='like.html'"><span class="icon">💜</span>Likes</div>
+    <div onclick="location.href='chat.html'"><span class="icon">✉️</span>Messages</div>
+    <div onclick="location.href='profile.html'"><span class="icon">👤</span>Profile</div>
 </div>
 
 <script>
@@ -150,26 +126,28 @@ function openMenu(){ menu.style.width="250px"; }
 function closeMenu(){ menu.style.width="0"; }
 function logout(){ auth.signOut().then(()=>location.href="login.html"); }
 
-/* INIT */
-auth.onAuthStateChanged(async u=>{
-    if(!u){ location.href="login.html"; return; }
+/* 🟩 SAFE AUTH CHECK */
+auth.onAuthStateChanged(async (u)=>{
+    if(!u){ 
+        // delay to avoid false redirect
+        setTimeout(()=> location.href="login.html", 400);
+        return;
+    }
     CURRENT=u;
     loadUsers();
 });
 
 /* LOAD USERS */
 async function loadUsers(){
-    let list=userList; list.innerHTML="";
+    let meDoc = await db.collection("users").doc(CURRENT.uid).get();
+    if(!meDoc.exists) return;
 
-    let me=await db.collection("users").doc(CURRENT.uid).get();
-    let myGender=me.data().gender||"Male";
-
+    let myGender = meDoc.data().gender || "Male";
     let target = myGender==="Male" ? "Female" : "Male";
 
-    let q=await db.collection("users").where("gender","==",target).get();
+    let q = await db.collection("users").where("gender","==",target).get();
 
-    ALL_USERS=[];
-
+    ALL_USERS = [];
     q.forEach(doc=>{
         let u=doc.data();
         u.id=doc.id;
@@ -179,7 +157,7 @@ async function loadUsers(){
     renderProfiles(ALL_USERS);
 }
 
-/* RENDER PROFILES */
+/* RENDER */
 function renderProfiles(data){
     userList.innerHTML="";
     data.forEach(u=>{
@@ -199,7 +177,7 @@ function renderProfiles(data){
     });
 }
 
-/* SEARCH FILTER */
+/* SEARCH */
 function filterProfiles(){
     let txt = searchInput.value.toLowerCase();
     let filtered = ALL_USERS.filter(u =>
@@ -226,4 +204,4 @@ function viewProfile(uid){
 </script>
 
 </body>
-    </html>
+</html>
