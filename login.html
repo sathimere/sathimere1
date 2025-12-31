@@ -4,27 +4,90 @@
   <title>Sathi Mere - Login</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <style>
-    body { font-family: Arial; padding: 20px; }
-    .box { max-width: 360px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; }
-    input { width: 100%; padding: 10px; margin: 8px 0; }
-    button { width: 100%; padding: 12px; margin-top: 10px; font-size: 16px; }
-    .link { color: blue; text-decoration: underline; cursor: pointer; }
+    body {
+      font-family: Arial;
+      margin: 0;
+      background: linear-gradient(135deg, #ff4fa5, #ff7bc1);
+      min-height: 100vh;
+      padding: 20px;
+      color: #fff;
+    }
+
+    h2, h3 { text-align: center; }
+
+    .box {
+      background: #ffffff;
+      color: #333;
+      max-width: 360px;
+      margin: auto;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      margin-top: 25px;
+      transition: 0.3s;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      font-size: 15px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      background: #ff4fa5;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover { opacity: 0.8; }
+
+    .link {
+      color: #ff4fa5;
+      font-weight: bold;
+      text-decoration: underline;
+      cursor: pointer;
+      text-align: center;
+      margin-top: 10px;
+      display: block;
+    }
+
+    /* Admin Toggle Button */
+    #adminBtn {
+      background: #222;
+      margin-top: 20px;
+    }
+
+    /* Hidden Boxes */
+    #signupBox, #adminBox { display: none; }
   </style>
 </head>
 
 <body>
 
-<h2 style="text-align:center;">Sathi Mere – Login</h2>
+<h2>Sathi Mere – Login</h2>
 
-<div class="box">
+<!-- USER LOGIN BOX -->
+<div class="box" id="loginBox">
 
-  <!-- Email Login -->
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="password" placeholder="Password">
+
   <button onclick="loginEmail()">Login</button>
 
   <p class="link" onclick="showSignup()">Create New Account</p>
@@ -32,22 +95,44 @@
 
   <hr>
 
-  <!-- Google Login -->
   <button onclick="loginGoogle()">Login with Google</button>
+
+  <button id="adminBtn" onclick="showAdmin()">Admin Login</button>
 
 </div>
 
+
 <!-- SIGNUP BOX -->
-<div class="box" id="signupBox" style="display:none;margin-top:25px;">
+<div class="box" id="signupBox">
   <h3>Create Account</h3>
+
   <input type="email" id="signupEmail" placeholder="Email">
   <input type="password" id="signupPass" placeholder="Password (6+ chars)">
+
   <button onclick="createAccount()">Create Account</button>
   <p class="link" onclick="hideSignup()">Back to Login</p>
 </div>
 
 
+<!-- ADMIN LOGIN BOX -->
+<div class="box" id="adminBox">
+  <h3>Admin Login</h3>
+
+  <input type="email" id="adminEmail" placeholder="Admin Email">
+  <input type="password" id="adminPass" placeholder="Admin Password">
+
+  <button onclick="adminLogin()">Login as Admin</button>
+  <p class="link" onclick="hideAdmin()">Back to User Login</p>
+
+  <p style="color:gray;font-size:14px;margin-top:10px;">
+    Admin Email: <b>sathimere.admin@gmail.com</b><br>
+    Password: <b>Abhi@631625</b>
+  </p>
+</div>
+
+
 <script>
+/* Firebase Init */
 const firebaseConfig = {
   apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
   authDomain: "sathimere-415fa.firebaseapp.com",
@@ -61,27 +146,27 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 
 
-// ---------- EMAIL LOGIN ----------
+/* USER EMAIL LOGIN */
 function loginEmail() {
   let email = document.getElementById("email").value;
   let pass = document.getElementById("password").value;
 
   auth.signInWithEmailAndPassword(email, pass)
     .then(() => window.location = "index.html")
-    .catch(err => alert(err.message));
+    .catch(e => alert(e.message));
 }
 
 
-// ---------- GOOGLE LOGIN ----------
+/* GOOGLE LOGIN */
 function loginGoogle() {
-  var provider = new firebase.auth.GoogleAuthProvider();
+  let provider = new firebase.auth.GoogleAuthProvider();
   auth.signInWithPopup(provider)
     .then(() => window.location = "index.html")
-    .catch(err => alert(err.message));
+    .catch(e => alert(e.message));
 }
 
 
-// ---------- CREATE ACCOUNT ----------
+/* CREATE ACCOUNT */
 function createAccount() {
   let email = document.getElementById("signupEmail").value;
   let pass = document.getElementById("signupPass").value;
@@ -89,31 +174,55 @@ function createAccount() {
   auth.createUserWithEmailAndPassword(email, pass)
     .then(() => {
       alert("Account Created!");
-      window.location = "index.html";
+      window.location = "profile.html";
     })
-    .catch(err => alert(err.message));
+    .catch(e => alert(e.message));
 }
 
 
-// ---------- RESET PASSWORD ----------
+/* RESET PASSWORD */
 function resetPassword() {
-  let email = prompt("Enter your email to reset password:");
+  let email = prompt("Enter your email:");
   if (!email) return;
 
   auth.sendPasswordResetEmail(email)
-    .then(() => alert("Password reset link sent to email"))
-    .catch(err => alert(err.message));
+    .then(() => alert("Password reset mail sent"))
+    .catch(e => alert(e.message));
 }
 
 
-// ---------- SHOW / HIDE SIGNUP ----------
+/* UI HANDLERS */
 function showSignup() {
-  document.getElementById("signupBox").style.display = "block";
+  signupBox.style.display = "block";
+  loginBox.style.display = "none";
 }
 function hideSignup() {
-  document.getElementById("signupBox").style.display = "none";
+  signupBox.style.display = "none";
+  loginBox.style.display = "block";
+}
+
+function showAdmin() {
+  adminBox.style.display = "block";
+  loginBox.style.display = "none";
+}
+function hideAdmin() {
+  adminBox.style.display = "none";
+  loginBox.style.display = "block";
+}
+
+
+/* ADMIN LOGIN (STATIC AUTH) */
+function adminLogin() {
+  let email = document.getElementById("adminEmail").value;
+  let pass  = document.getElementById("adminPass").value;
+
+  if (email === "sathimere.admin@gmail.com" && pass === "Abhi@631625") {
+    window.location = "admin.html";
+  } else {
+    alert("Invalid Admin Credentials");
+  }
 }
 </script>
 
 </body>
-    </html>
+</html>
