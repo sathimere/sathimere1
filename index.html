@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>SathiMere - Match</title>
+<title>SathiMere - Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <!-- Firebase -->
@@ -17,28 +17,23 @@ body{margin:0;font-family:Arial;background:#fff;color:#333;}
 #menu a{padding:12px 20px;display:block;font-size:18px;color:#333;text-decoration:none;}
 #menu a:hover{background:#ffe0f1;}
 .closebtn{position:absolute;top:10px;right:10px;font-size:30px;}
-.card{width:90%;margin:90px auto 80px;background:#fff;border-radius:15px;box-shadow:0 4px 15px rgba(0,0,0,0.1);overflow:hidden;text-align:center;}
-.card img{width:100%;height:280px;object-fit:cover;}
-.details{padding:15px;font-size:18px;}
-.btn{background:#ff4fa5;color:#fff;padding:12px 20px;border-radius:10px;display:inline-block;margin:10px;text-decoration:none;font-weight:bold;cursor:pointer;}
+.scroll-list{margin-top:65px; max-height:calc(100vh - 120px); overflow-y:auto; padding:10px;}
+.card{background:#fff;border-radius:15px;box-shadow:0 4px 12px rgba(0,0,0,0.1);margin-bottom:15px;overflow:hidden;}
+.card img{width:100%;height:200px;object-fit:cover;}
+.details{padding:12px;font-size:16px;text-align:center;}
+.like-btn,.chat-btn,.view-btn,.accept-btn,.reject-btn{background:#ff1493;color:#fff;padding:8px 12px;margin:5px;border:none;border-radius:8px;cursor:pointer;}
+.accept-btn{background:green;} .reject-btn{background:red;}
 .bottom-nav{position:fixed;bottom:0;width:100%;background:#fff;border-top:1px solid #ddd;display:flex;justify-content:space-around;padding:10px 0;box-shadow:0 -2px 10px rgba(0,0,0,0.1);}
 .bottom-nav div{text-align:center;font-size:14px;color:#ff4fa5;font-weight:bold;display:flex;flex-direction:column;gap:3px;}
 .icon{font-size:20px;}
-#filterBox{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);display:none;justify-content:center;align-items:center;z-index:50;}
-.filter-card{width:85%;background:#fff;padding:20px;border-radius:15px;box-shadow:0 4px 20px rgba(0,0,0,0.2);}
-.filter-card input,.filter-card select{width:100%;padding:10px;margin:10px 0;border-radius:8px;border:1px solid #ccc;}
-.f-btn{width:100%;background:#ff4fa5;padding:12px;border-radius:10px;color:#fff;margin-top:10px;font-weight:bold;text-align:center;}
-.like-btn,.chat-btn{background:#ff1493;color:white;padding:10px 15px;margin:5px;border:none;border-radius:8px;cursor:pointer;}
-.scroll-list{max-height:300px;overflow-y:auto;margin-top:10px;}
 </style>
-
 </head>
 <body>
 
 <div class="topbar">
 <span onclick="openMenu()">☰</span>
-SathiMere
-<span onclick="openFilter()">⚙</span>
+Dashboard
+<span onclick="logout()">⏻</span>
 </div>
 
 <div id="menu">
@@ -51,23 +46,11 @@ SathiMere
 <a onclick="logout()">Logout</a>
 </div>
 
-<div id="filterBox">
-<div class="filter-card">
-<h3>Filter Profiles</h3>
-<input type="number" id="fAge" placeholder="Age (e.g. 18-30)">
-<input type="text" id="fState" placeholder="State">
-<input type="text" id="fCaste" placeholder="Caste">
-<input type="text" id="fChoice" placeholder="Choice">
-<div class="f-btn" onclick="applyFilter()">Apply Filter</div>
-<div class="f-btn" style="background:#bbb" onclick="closeFilter()">Close</div>
-</div>
-</div>
-
 <div id="userList" class="scroll-list"></div>
 
 <div class="bottom-nav">
 <div onclick="location.href='profile.html'"><span class="icon">👤</span>Profile</div>
-<div onclick="loadMatches()"><span class="icon">❤️</span>Match</div>
+<div onclick="loadUsers()"><span class="icon">❤️</span>Profiles</div>
 <div onclick="location.href='chat.html'"><span class="icon">💬</span>Chat</div>
 </div>
 
@@ -85,55 +68,46 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-/* UI */
+/* Menu */
 function openMenu(){ document.getElementById("menu").style.width="250px"; }
 function closeMenu(){ document.getElementById("menu").style.width="0"; }
-function openFilter(){ document.getElementById("filterBox").style.display="flex"; }
-function closeFilter(){ document.getElementById("filterBox").style.display="none"; }
 function logout(){ auth.signOut().then(()=>location.href="login.html"); }
 
 let currentUser=null;
-let usersList=[];
-let filters={};
 
 /* Load Users */
 auth.onAuthStateChanged(async user=>{
-    if(!user) location.href="login.html";
+    if(!user){ location.href="login.html"; return; }
     currentUser=user;
     loadUsers();
+    loadRequests();
 });
 
-/* Filters */
-function applyFilter(){
-    filters.age=document.getElementById("fAge").value;
-    filters.state=document.getElementById("fState").value;
-    filters.caste=document.getElementById("fCaste").value;
-    filters.choice=document.getElementById("fChoice").value;
-    closeFilter();
-    loadUsers();
-}
-
+/* Load opposite gender users */
 async function loadUsers(){
-    let html="";
-    let q=await db.collection("users").get();
+    let listDiv=document.getElementById("userList");
+    listDiv.innerHTML="";
+
+    let myDoc=await db.collection("users").doc(currentUser.uid).get();
+    let myGender=myDoc.exists?myDoc.data().gender:"Male";
+    let opposite=myGender.toLowerCase()==="male"?"Female":"Male";
+
+    let q=await db.collection("users").where("gender","==",opposite).get();
+
     q.forEach(doc=>{
         let u=doc.data();
-        let ageOk=!filters.age || u.age==filters.age;
-        let stateOk=!filters.state || (u.state && u.state.toLowerCase().includes(filters.state.toLowerCase()));
-        let casteOk=!filters.caste || (u.caste && u.caste.toLowerCase().includes(filters.caste.toLowerCase()));
-        let choiceOk=!filters.choice || (u.choice && u.choice.toLowerCase().includes(filters.choice.toLowerCase()));
-        if(ageOk && stateOk && casteOk && choiceOk){
-            html+=`<div class="card">
-            <img src="${u.photo||'https://via.placeholder.com/300'}">
-            <div class="details">
-            <b>${u.name} ${u.surname}</b> | Age:${u.age||"-"}<br>
-            Gender: ${u.gender||"-"}<br>
-            <button class="like-btn" onclick="sendLike('${doc.id}')">💜 Like</button>
-            <button class="chat-btn" onclick="sendRequest('${doc.id}')">Chat Request</button>
-            </div></div>`;
-        }
+        let card=document.createElement("div");
+        card.className="card";
+        card.innerHTML=`<img src="${u.photo||'https://via.placeholder.com/300'}">
+        <div class="details">
+        <b>${u.name} ${u.surname}</b> | Age:${u.age||"-"}<br>
+        Gender: ${u.gender||"-"}<br>
+        <button class="like-btn" onclick="sendLike('${doc.id}')">💜 Like</button>
+        <button class="chat-btn" onclick="sendRequest('${doc.id}')">Chat Request</button>
+        <button class="view-btn" onclick="viewProfile('${doc.id}')">View Profile</button>
+        </div>`;
+        listDiv.appendChild(card);
     });
-    document.getElementById("userList").innerHTML=html||"<p>No users found.</p>";
 }
 
 /* Like / Chat logic */
@@ -155,7 +129,39 @@ async function sendRequest(uid){
     });
     alert("Request sent!");
 }
-</script>
 
+function viewProfile(uid){
+    location.href="profile-view.html?id="+uid;
+}
+
+/* Load requests sent to current user */
+async function loadRequests(){
+    let reqDiv=document.createElement("div");
+    reqDiv.style.padding="10px";
+    reqDiv.innerHTML="<h3>Incoming Chat Requests</h3>";
+    document.body.insertBefore(reqDiv,document.getElementById("userList"));
+
+    let q=await db.collection("requests").where("to","==",currentUser.uid).get();
+    q.forEach(doc=>{
+        let r=doc.data();
+        let row=document.createElement("div");
+        row.className="card";
+        row.innerHTML=`<div class="details">
+        From: ${r.from}<br>
+        Status: ${r.status}<br>
+        <button class="accept-btn" onclick="respondRequest('${doc.id}',true)">Accept</button>
+        <button class="reject-btn" onclick="respondRequest('${doc.id}',false)">Reject</button>
+        </div>`;
+        reqDiv.appendChild(row);
+    });
+}
+
+async function respondRequest(id,accept){
+    let status=accept?"accepted":"rejected";
+    await db.collection("requests").doc(id).update({status});
+    alert("Request "+status);
+    loadRequests();
+}
+</script>
 </body>
-    </html>
+</html>
