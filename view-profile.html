@@ -129,9 +129,14 @@ async function loadProfile(myId){
 
     const u=doc.data();
 
+    // Display only Name + Age + rest fields, hide mobile
     container.innerHTML=`
         <img class="profile-img" src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
         <div class="name">${u.name}</div>
+        <div style="color:gray; margin-bottom:10px">Age: ${u.age || '-'}</div>
+        <div style="color:gray; margin-bottom:10px">Gender: ${u.gender || '-'}</div>
+        <div style="color:gray; margin-bottom:10px">City: ${u.city || '-'}</div>
+        <div style="color:gray; margin-bottom:10px">State: ${u.state || '-'}</div>
         <button id="likeBtn" class="btn">💜 Like</button>
         <button id="chatBtn" class="btn">Chat Request</button>
     `;
