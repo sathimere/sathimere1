@@ -3,156 +3,60 @@
 <head>
 <title>Sathi Mere - Home</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
-
 <style>
 body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
-
-.header {
-    background: #ff1493;
-    padding: 15px;
-    color: white;
-    text-align: center;
-    font-size: 22px;
-    font-weight: bold;
-    position: fixed;
-    top: 0;
-    width: 100%;
-}
-
+.header { background: #ff1493; padding: 15px; color: white; text-align: center; font-size: 22px; font-weight: bold; position: fixed; top: 0; width: 100%; }
 .menu-btn { position: absolute; left: 15px; top: 14px; font-size: 25px; color: white; cursor: pointer; }
-
-/* NEW FILTER BUTTON */
-.filter-btn {
-    position: absolute;
-    right: 15px;
-    top: 10px;
-    background: white;
-    color: #ff1493;
-    border: 2px solid #ff1493;
-    padding: 6px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-/* SEARCH BAR */
-.search-box {
-    width: 90%;
-    margin: 70px auto 15px auto;
-    display: block;
-    padding: 10px 14px;
-    border-radius: 10px;
-    border: 2px solid #ff1493;
-    font-size: 17px;
-    outline: none;
-}
-
+.logout-btn { position: absolute; right: 15px; top: 10px; background: white; color: #ff1493; border: 2px solid #ff1493; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
 #menu { width: 0; height: 100%; background: white; position: fixed; top: 0; left: 0; overflow: hidden; transition: 0.3s; z-index: 20; padding-top: 60px; box-shadow: 4px 0 12px rgba(0,0,0,0.3); }
 #menu a { display: block; padding: 15px 25px; font-size: 18px; text-decoration: none; color: #444; }
 #menu a:hover { background: #ffe1f1; }
 .close-menu { position: absolute; top: 12px; right: 15px; font-size: 28px; cursor: pointer; }
-
-.container { padding: 20px 15px 80px; }
-
-.user-card {
-    background: white;
-    margin-bottom: 15px;
-    padding: 15px;
-    border-radius: 15px;
-    box-shadow: 0 0 10px #ffc0d9;
-    display: flex;
-    align-items: center;
-}
-
-.user-card img {
-    width: 55px;
-    height: 55px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid #ff1493;
-    margin-right: 15px;
-}
-
+.container { padding: 80px 15px 80px; }
+.user-card { background: white; margin-bottom: 15px; padding: 15px; border-radius: 15px; box-shadow: 0 0 10px #ffc0d9; display: flex; align-items: center; }
+.user-card img { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 3px solid #ff1493; margin-right: 15px; }
 .name { font-weight: bold; color: #ff1493; }
-
 .btn { background: #ff1493; color: white; border: none; border-radius: 8px; margin-top: 5px; padding: 7px 12px; cursor: pointer; }
 .btn-disabled { background: gray; }
-
-/* BOTTOM NAV */
-.bottom-nav {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    background: #ff1493;
-    display: flex;
-    justify-content: space-around;
-    border-top: 2px solid gold;
-    border-left: 2px solid gold;
-    border-right: 2px solid gold;
-    padding: 8px 0;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-}
-
-.nav-item { 
-    text-align: center; 
-    color: gold; 
-    font-weight: bold; 
-}
-
-.nav-item span { 
-    font-size: 26px; 
-    display: block; 
-    color: gold; 
-}
+.bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; border-top: 1px solid #ddd; padding: 8px 0; }
+.nav-item { text-align: center; color: #ff1493; font-weight: bold; }
+.nav-item span { font-size: 26px; display: block; }
 </style>
 </head>
-
 <body>
-
 <!-- HEADER -->
 <div class="header">
 <span class="menu-btn" onclick="openMenu()">☰</span>
 Sathi Mere
-<button class="filter-btn" onclick="location.href='filter.html'">Filter</button>
+<button class="logout-btn" onclick="logout()">Logout</button>
 </div>
-
-<!-- SEARCH -->
-<input id="searchInput" class="search-box" placeholder="Search by name..." onkeyup="searchUser()">
-
 <!-- MENU -->
 <div id="menu">
 <span class="close-menu" onclick="closeMenu()">✖</span>
 <a href="profile.html">My Profile</a>
 <a href="wallet.html">Wallet</a>
-<a href="like.html">Likes</a>
-<a href="chat.html">Chats</a>
-<a href="referral.html">Referral</a>
 <a href="help.html">Help & Support</a>
 <a href="privacy.html">Privacy Policy</a>
 <a onclick="logout()">Logout</a>
 </div>
-
-<!-- USER LIST -->
+<!-- CONTENT -->
 <div class="container" id="userList">Loading...</div>
-
-<!-- BOTTOM NAV ORIGINAL -->
+<!-- BOTTOM NAV -->
 <div class="bottom-nav">
-    <div class="nav-item" onclick="location.href='like.html'">
-        <span id="navHeart">🤍</span> Like
-    </div>
-    <div class="nav-item" onclick="location.href='chat.html'">
-        <span>💬</span> Chat
-    </div>
-    <div class="nav-item" onclick="location.href='profile.html'">
-        <span>👤</span> Profile
-    </div>
+<div class="nav-item" onclick="location.href='like.html'">
+<span>💜</span> Like
+</div>
+<div class="nav-item" onclick="location.href='chat.html'">
+<span>✉️</span> Chat
+</div>
+<div class="nav-item" onclick="location.href='profile.html'">
+<span>👤</span> Profile
+</div>
 </div>
 
 <script>
@@ -162,163 +66,150 @@ function closeMenu(){ menu.style.width = "0"; }
 
 /* AUTH CHECK */
 auth.onAuthStateChanged(async (user) => {
-    if (!user) return window.location = "login.html";
-    loadUsers(user.uid);
+if (!user) return (window.location = "login.html");
+loadUsers(user.uid);
 });
-
-let ALL_USERS = [];
 
 /* LOAD USERS */
 async function loadUsers(myId) {
-    const list = document.getElementById("userList");
-    list.innerHTML = "Loading...";
+const list = document.getElementById("userList");
+list.innerHTML = "Loading...";
 
-    let me = await db.collection("users").doc(myId).get();
-    let myGender = me.data().gender;
-    let opposite = myGender === "Male" ? "Female" : "Male";
+let me = await db.collection("users").doc(myId).get();
+let myGender = me.data().gender;
 
-    db.collection("users")
-      .where("gender", "==", opposite)
-      .onSnapshot(snap => {
-          list.innerHTML = "";
-          ALL_USERS = [];
+let opposite = myGender === "Male" ? "Female" : "Male";
 
-          snap.forEach(doc => {
-              let u = doc.data();
-              u.uid = doc.id;
-              ALL_USERS.push(u);
-          });
+db.collection("users")
+.where("gender", "==", opposite)
+.onSnapshot(snap => {
 
-          renderUsers(ALL_USERS, myId);
-      });
+list.innerHTML = "";
+
+snap.forEach(doc => {
+    let u = doc.data();
+    let uid = doc.id;
+
+    let card = document.createElement("div");
+    card.className = "user-card";
+
+    card.innerHTML = `
+        <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
+        <div style="flex:1">
+            <div class="name">${u.name} ${u.surname}</div>
+            <div style="color:gray">${u.gender}</div>
+            <button class="btn" onclick="sendLike('${uid}')">💜 Like</button>
+            <button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>
+            <button id="btn_${uid}" class="btn">✉ Chat Request</button>
+        </div>
+    `;
+
+    list.appendChild(card);
+
+    checkStatus(myId, uid);
+
+    document.getElementById("btn_" + uid).onclick = () =>
+        sendRequest(myId, uid, myGender);
+});
+});
 }
 
-/* RENDER USERS */
-async function renderUsers(users, myId) {
-    const list = document.getElementById("userList");
-    list.innerHTML = "";
-
-    for (let u of users) {
-        let uid = u.uid;
-
-        // Check if current user has already liked this person
-        let likedSnap = await db.collection("likes")
-            .where("from", "==", myId)
-            .where("to", "==", uid)
-            .get();
-
-        // Check if this user has liked current user
-        let likedBackSnap = await db.collection("likes")
-            .where("from", "==", uid)
-            .where("to", "==", myId)
-            .get();
-
-        let likeBtnHTML = "";
-        if (!likedSnap.empty) {
-            likeBtnHTML = `<button class="btn btn-disabled">❤️ Liked</button>`;
-        } else {
-            likeBtnHTML = `<button class="btn" onclick="toggleLike('${uid}')">🤍 Like</button>`;
-        }
-
-        // If both liked each other → show View Profile button
-        if (!likedSnap.empty && !likedBackSnap.empty) {
-            likeBtnHTML = `<button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>`;
-        }
-
-        let card = document.createElement("div");
-        card.className = "user-card";
-
-        card.innerHTML = `
-            <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
-            <div style="flex:1">
-                <div class="name">${u.name} ${u.surname}</div>
-                <div style="color:gray">${u.gender}</div>
-                ${likeBtnHTML}
-                <button id="btn_${uid}" class="btn">✉ Chat Request</button>
-                <button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>
-            </div>
-        `;
-
-        list.appendChild(card);
-
-        document.getElementById("btn_" + uid).onclick = () =>
-            sendRequest(myId, uid, u.gender);
-    }
-}
-
-/* LIKE BUTTON */
-async function toggleLike(uid) {
-    let btn = document.querySelector(`#userList #like_${uid}`);
-    await db.collection("likes").add({
-        from: auth.currentUser.uid,
-        to: uid,
-        time: Date.now()
-    });
-    loadUsers(auth.currentUser.uid); // refresh UI
-}
-
-/* SEARCH */
-function searchUser() {
-    const text = document.getElementById("searchInput").value.toLowerCase();
-    const filtered = ALL_USERS.filter(u =>
-        u.name.toLowerCase().includes(text) ||
-        u.surname.toLowerCase().includes(text)
-    );
-    renderUsers(filtered, auth.currentUser.uid);
+/* LIKE */
+async function sendLike(uid) {
+await db.collection("likes").add({
+from: auth.currentUser.uid,
+to: uid,
+time: Date.now()
+});
+alert("Liked!");
 }
 
 /* VIEW PROFILE */
 function viewProfile(uid) {
-    window.location = "view-profile.html?id=" + uid;
+window.location = "view-profile.html?id=" + uid;
 }
 
-/* CHAT REQUEST */
+/* CHECK CHAT REQUEST STATUS */
+async function checkStatus(myId, otherId) {
+let btn = document.getElementById("btn_" + otherId);
+
+let doc = await db.collection("chatRequests")
+.doc(myId + "_" + otherId)
+.get();
+
+if (doc.exists) {
+let status = doc.data().status;
+
+if (status === "pending") {
+    btn.innerText = "Request Sent";
+    btn.disabled = true;
+    btn.classList.add("btn-disabled");
+}
+
+if (status === "accepted") {
+    btn.innerText = "Chat Now";
+    btn.onclick = () => window.location = "chat-room.html?u=" + otherId;
+}
+}
+}
+
+/* SEND CHAT REQUEST WITH FEMALE-FREE & MALE-DEDUCT LOGIC */
 async function sendRequest(myId, toId, myGender) {
-    if (myGender === "Female") {
-        await db.collection("chatRequests")
-            .doc(myId + "_" + toId)
-            .set({
-                from: myId,
-                to: toId,
-                status: "pending",
-                timestamp: Date.now(),
-                paidBy: "Male"
-            });
-        alert("Chat request sent! (No deduction for Female)");
-        return;
-    }
 
-    let wallet = await db.collection("wallet").doc(myId).get();
-    let balance = wallet.exists ? wallet.data().balance : 0;
-
-    if (balance < 10) {
-        alert("Insufficient balance! Please add money.");
-        return;
-    }
-
-    await db.collection("wallet").doc(myId).update({ balance: balance - 10 });
+if(myGender === "Female") {
+    // Female request → no deduction
     await db.collection("chatRequests")
-        .doc(myId + "_" + toId)
-        .set({
-            from: myId,
-            to: toId,
-            status: "pending",
-            timestamp: Date.now(),
-            paidBy: "Male"
-        });
-
-    await db.collection("history").add({
-        uid: myId,
-        amount: -10,
-        type: "Chat Request",
-        time: new Date()
+    .doc(myId + "_" + toId)
+    .set({
+        from: myId,
+        to: toId,
+        status: "pending",
+        timestamp: Date.now(),
+        paidBy: "Male"
     });
-
-    alert("Chat request sent! ₹10 deducted.");
+    alert("Chat request sent! (No deduction for Female)");
+    checkStatus(myId, toId);
+    return;
 }
 
+// Male logic → deduct ₹10
+let wallet = await db.collection("wallet").doc(myId).get();
+let balance = wallet.exists ? wallet.data().balance : 0;
+
+if (balance < 10) {
+alert("Insufficient balance! Please add money.");
+return;
+}
+
+// Deduct 10
+await db.collection("wallet").doc(myId).update({ balance: balance - 10 });
+
+// Create request
+await db.collection("chatRequests")
+.doc(myId + "_" + toId)
+.set({
+from: myId,
+to: toId,
+status: "pending",
+timestamp: Date.now(),
+paidBy: "Male"
+});
+
+// Add to history
+await db.collection("history").add({
+uid: myId,
+amount: -10,
+type: "Chat Request",
+time: new Date()
+});
+
+alert("Chat request sent! ₹10 deducted.");
+checkStatus(myId, toId);
+}
+
+/* LOGOUT */
 function logout() {
-    auth.signOut().then(() => window.location = "login.html");
+auth.signOut().then(() => { window.location = "login.html"; });
 }
 </script>
 
