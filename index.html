@@ -30,20 +30,6 @@ body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
 /* NEW FILTER BUTTON */
 .filter-btn {
     position: absolute;
-    right: 55px;
-    top: 10px;
-    background: white;
-    color: #ff1493;
-    border: 2px solid #ff1493;
-    padding: 6px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-/* NEW REFERRAL BUTTON */
-.ref-btn {
-    position: absolute;
     right: 15px;
     top: 10px;
     background: white;
@@ -55,17 +41,10 @@ body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
     font-weight: bold;
 }
 
-#menu { width: 0; height: 100%; background: white; position: fixed; top: 0; left: 0; overflow: hidden; transition: 0.3s; z-index: 20; padding-top: 60px; box-shadow: 4px 0 12px rgba(0,0,0,0.3); }
-#menu a { display: block; padding: 15px 25px; font-size: 18px; text-decoration: none; color: #444; }
-#menu a:hover { background: #ffe1f1; }
-.close-menu { position: absolute; top: 12px; right: 15px; font-size: 28px; cursor: pointer; }
-
-.container { padding: 130px 15px 80px; }
-
-/* SEARCH BAR (ONLY NEW UI) */
+/* SEARCH BAR */
 .search-box {
     width: 90%;
-    margin: 0 auto 15px auto;
+    margin: 70px auto 15px auto;
     display: block;
     padding: 10px 14px;
     border-radius: 10px;
@@ -73,6 +52,13 @@ body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
     font-size: 17px;
     outline: none;
 }
+
+#menu { width: 0; height: 100%; background: white; position: fixed; top: 0; left: 0; overflow: hidden; transition: 0.3s; z-index: 20; padding-top: 60px; box-shadow: 4px 0 12px rgba(0,0,0,0.3); }
+#menu a { display: block; padding: 15px 25px; font-size: 18px; text-decoration: none; color: #444; }
+#menu a:hover { background: #ffe1f1; }
+.close-menu { position: absolute; top: 12px; right: 15px; font-size: 28px; cursor: pointer; }
+
+.container { padding: 20px 15px 80px; }
 
 .user-card {
     background: white;
@@ -98,6 +84,7 @@ body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
 .btn { background: #ff1493; color: white; border: none; border-radius: 8px; margin-top: 5px; padding: 7px 12px; cursor: pointer; }
 .btn-disabled { background: gray; }
 
+/* NEW INSTAGRAM STYLE BOTTOM NAV */
 .bottom-nav {
     position: fixed;
     bottom: 0;
@@ -113,8 +100,17 @@ body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
     border-top-right-radius: 10px;
 }
 
-.nav-item { text-align: center; color: gold; font-weight: bold; }
-.nav-item span { font-size: 26px; display: block; color: gold; }
+.nav-item { 
+    text-align: center; 
+    color: gold; 
+    font-weight: bold; 
+}
+
+.nav-item span { 
+    font-size: 26px; 
+    display: block; 
+    color: gold; 
+}
 </style>
 </head>
 
@@ -125,10 +121,9 @@ body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
 <span class="menu-btn" onclick="openMenu()">☰</span>
 Sathi Mere
 <button class="filter-btn" onclick="location.href='filter.html'">Filter</button>
-<button class="ref-btn" onclick="location.href='referral.html'">Referral</button>
 </div>
 
-<!-- SEARCH BAR -->
+<!-- SEARCH -->
 <input id="searchInput" class="search-box" placeholder="Search by name..." onkeyup="searchUser()">
 
 <!-- MENU -->
@@ -136,19 +131,28 @@ Sathi Mere
 <span class="close-menu" onclick="closeMenu()">✖</span>
 <a href="profile.html">My Profile</a>
 <a href="wallet.html">Wallet</a>
+<a href="like.html">Likes</a>
+<a href="chat.html">Chats</a>
+<a href="referral.html">Referral</a> <!-- SHIFTED HERE -->
 <a href="help.html">Help & Support</a>
 <a href="privacy.html">Privacy Policy</a>
 <a onclick="logout()">Logout</a>
 </div>
 
-<!-- CONTENT -->
+<!-- USER LIST -->
 <div class="container" id="userList">Loading...</div>
 
-<!-- BOTTOM NAV -->
+<!-- INSTAGRAM STYLE NAV -->
 <div class="bottom-nav">
-<div class="nav-item" onclick="location.href='like.html'"><span>💛</span> Like</div>
-<div class="nav-item" onclick="location.href='chat.html'"><span>📨</span> Chat</div>
-<div class="nav-item" onclick="location.href='profile.html'"><span>👤</span> Profile</div>
+    <div class="nav-item" onclick="location.href='like.html'">
+        <span id="navHeart">🤍</span> Like
+    </div>
+    <div class="nav-item" onclick="location.href='chat.html'">
+        <span>💬</span> Chat
+    </div>
+    <div class="nav-item" onclick="location.href='profile.html'">
+        <span>👤</span> Profile
+    </div>
 </div>
 
 <script>
@@ -162,17 +166,15 @@ if (!user) return (window.location = "login.html");
 loadUsers(user.uid);
 });
 
-let ALL_USERS = []; // NEW (search ke liye)
+let ALL_USERS = [];
 
-/* LOAD USERS — WITHOUT ANY CHANGE */
+/* LOAD USERS */
 async function loadUsers(myId) {
-
 const list = document.getElementById("userList");
 list.innerHTML = "Loading...";
 
 let me = await db.collection("users").doc(myId).get();
 let myGender = me.data().gender;
-
 let opposite = myGender === "Male" ? "Female" : "Male";
 
 db.collection("users")
@@ -180,19 +182,19 @@ db.collection("users")
 .onSnapshot(snap => {
 
     list.innerHTML = "";
-    ALL_USERS = [];  // store all users
+    ALL_USERS = [];
 
     snap.forEach(doc => {
         let u = doc.data();
         u.uid = doc.id;
-        ALL_USERS.push(u); // saved for search
+        ALL_USERS.push(u);
     });
 
     renderUsers(ALL_USERS, myId);
 });
 }
 
-/* RENDER USERS (NO CHANGE) */
+/* RENDER */
 function renderUsers(users, myId) {
 const list = document.getElementById("userList");
 list.innerHTML = "";
@@ -208,7 +210,9 @@ users.forEach(u => {
         <div style="flex:1">
             <div class="name">${u.name} ${u.surname}</div>
             <div style="color:gray">${u.gender}</div>
-            <button class="btn" onclick="sendLike('${uid}')">💜 Like</button>
+
+            <button id="like_${uid}" class="btn" onclick="toggleLike('${uid}')">🤍 Like</button>
+
             <button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>
             <button id="btn_${uid}" class="btn">✉ Chat Request</button>
         </div>
@@ -223,26 +227,37 @@ users.forEach(u => {
 });
 }
 
-/* SEARCH FUNCTION */
-function searchUser() {
-const text = document.getElementById("searchInput").value.toLowerCase();
+/* LIKE BUTTON → HEART TOGGLE */
+async function toggleLike(uid) {
 
-let filtered = ALL_USERS.filter(u =>
-    u.name.toLowerCase().includes(text) ||
-    u.surname.toLowerCase().includes(text)
-);
+let btn = document.getElementById("like_" + uid);
 
-renderUsers(filtered, auth.currentUser.uid);
+/* Already liked */
+if(btn.innerText.includes("❤️")){
+    alert("Already liked!");
+    return;
 }
 
-/* LIKE */
-async function sendLike(uid) {
+/* New like */
 await db.collection("likes").add({
     from: auth.currentUser.uid,
     to: uid,
     time: Date.now()
 });
-alert("Liked!");
+
+btn.innerHTML = "❤️ Liked";
+document.getElementById("navHeart").innerHTML = "❤️";
+
+}
+
+/* SEARCH */
+function searchUser() {
+const text = document.getElementById("searchInput").value.toLowerCase();
+let filtered = ALL_USERS.filter(u =>
+    u.name.toLowerCase().includes(text) ||
+    u.surname.toLowerCase().includes(text)
+);
+renderUsers(filtered, auth.currentUser.uid);
 }
 
 /* VIEW PROFILE */
@@ -250,7 +265,7 @@ function viewProfile(uid) {
 window.location = "view-profile.html?id=" + uid;
 }
 
-/* CHECK CHAT REQUEST */
+/* CHECK CHAT */
 async function checkStatus(myId, otherId) {
 let btn = document.getElementById("btn_" + otherId);
 
@@ -274,19 +289,19 @@ if (doc.exists) {
 }
 }
 
-/* SEND REQUEST — SAME */
+/* CHAT REQUEST */
 async function sendRequest(myId, toId, myGender) {
 
 if(myGender === "Female") {
     await db.collection("chatRequests")
-        .doc(myId + "_" + toId)
-        .set({
-            from: myId,
-            to: toId,
-            status: "pending",
-            timestamp: Date.now(),
-            paidBy: "Male"
-        });
+    .doc(myId + "_" + toId)
+    .set({
+        from: myId,
+        to: toId,
+        status: "pending",
+        timestamp: Date.now(),
+        paidBy: "Male"
+    });
 
     alert("Chat request sent! (No deduction for Female)");
     checkStatus(myId, toId);
@@ -331,4 +346,4 @@ auth.signOut().then(() => { window.location = "login.html"; });
 </script>
 
 </body>
-</html>
+    </html>
