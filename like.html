@@ -25,15 +25,14 @@ body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
     width: 100%;
 }
 
-.menu-btn { position: absolute; left: 15px; top: 14px; font-size: 25px; color: white; cursor: pointer; }
-
-#menu { width: 0; height: 100%; background: white; position: fixed; top: 0; left: 0;
-       overflow: hidden; transition: 0.3s; z-index: 20; padding-top: 60px;
-       box-shadow: 4px 0 12px rgba(0,0,0,0.3); }
-
-#menu a { display: block; padding: 15px 25px; font-size: 18px; text-decoration: none; color: #444; }
-#menu a:hover { background: #ffe1f1; }
-.close-menu { position: absolute; top: 12px; right: 15px; font-size: 28px; cursor: pointer; }
+.back-btn {
+    position: absolute;
+    left: 15px;
+    top: 14px;
+    font-size: 25px;
+    color: white;
+    cursor: pointer;
+}
 
 .section-title {
     font-size: 19px;
@@ -104,19 +103,8 @@ body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
 
 <!-- HEADER -->
 <div class="header">
-<span class="menu-btn" onclick="openMenu()">☰</span>
+<span class="back-btn" onclick="location.href='index.html'">←</span>
 Likes
-</div>
-
-<!-- MENU -->
-<div id="menu">
-<span class="close-menu" onclick="closeMenu()">✖</span>
-<a href="index.html">Home</a>
-<a href="profile.html">My Profile</a>
-<a href="wallet.html">Wallet</a>
-<a href="help.html">Help & Support</a>
-<a href="privacy.html">Privacy Policy</a>
-<a onclick="logout()">Logout</a>
 </div>
 
 <!-- OUTGOING LIKES -->
@@ -129,14 +117,12 @@ Likes
 
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
-<div class="nav-item" onclick="location.href='like.html'"><span>💛</span> Like</div>
+<div class="nav-item" onclick="location.href='index.html'"><span>🏠</span> Home</div>
 <div class="nav-item" onclick="location.href='chat.html'"><span>📨</span> Chat</div>
 <div class="nav-item" onclick="location.href='profile.html'"><span>👤</span> Profile</div>
 </div>
 
 <script>
-function openMenu(){ menu.style.width = "260px"; }
-function closeMenu(){ menu.style.width = "0"; }
 
 /* LOGIN CHECK */
 auth.onAuthStateChanged(user => {
@@ -144,15 +130,22 @@ auth.onAuthStateChanged(user => {
     loadLikes(user.uid);
 });
 
+/* LOAD ALL LIKES */
 async function loadLikes(myId) {
 
-    /* OUTGOING LIKES — YOU LIKED */
+    /* OUTGOING — YOU LIKED */
     db.collection("likes")
       .where("from", "==", myId)
+      .orderBy("time", "desc")
       .onSnapshot(async snap => {
 
         const box = document.getElementById("outgoingList");
         box.innerHTML = "";
+
+        if (snap.empty) {
+            box.innerHTML = "<div style='color:gray;'>No likes yet.</div>";
+            return;
+        }
 
         snap.forEach(async doc => {
             let data = doc.data();
@@ -162,53 +155,67 @@ async function loadLikes(myId) {
 
             let u = user.data();
 
-            let card = document.createElement("div");
-            card.className = "user-card";
-
-            card.innerHTML = `
-                <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
-                <div style="flex:1">
-                    <div class="name">${u.name} ${u.surname}</div>
-                    <div style="color:gray">${u.gender}</div>
-                    <button class="btn disabled">Liked ✓</button>
+            box.innerHTML += `
+                <div class="user-card">
+                    <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
+                    <div style="flex:1">
+                        <div class="name">${u.name} ${u.surname}</div>
+                        <div style="color:gray">${u.gender}</div>
+                        <button class="btn btn-disabled">Liked ✓</button>
+                    </div>
                 </div>
             `;
-
-            box.appendChild(card);
         });
     });
 
 
-    /* INCOMING LIKES — THEY LIKED YOU */
+    /* INCOMING — THEY LIKED YOU */
     db.collection("likes")
       .where("to", "==", myId)
+      .orderBy("time", "desc")
       .onSnapshot(async snap => {
 
         const box = document.getElementById("incomingList");
         box.innerHTML = "";
 
+        if (snap.empty) {
+            box.innerHTML = "<div style='color:gray;'>No one liked you yet.</div>";
+            return;
+        }
+
         snap.forEach(async doc => {
             let data = doc.data();
+            let likerId = data.from;
 
-            let user = await db.collection("users").doc(data.from).get();
+            let user = await db.collection("users").doc(likerId).get();
             if (!user.exists) return;
 
             let u = user.data();
-            let uid = user.id;
 
-            let card = document.createElement("div");
-            card.className = "user-card";
+            // CHECK IF YOU ALREADY LIKED BACK
+            let likeBackCheck = await db.collection("likes")
+                .where("from", "==", myId)
+                .where("to", "==", likerId)
+                .get();
 
-            card.innerHTML = `
-                <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
-                <div style="flex:1">
-                    <div class="name">${u.name} ${u.surname}</div>
-                    <div style="color:gray">${u.gender}</div>
-                    <button class="btn" onclick="likeBack('${uid}')">💜 Like Back</button>
+            let buttonHTML = "";
+
+            if (likeBackCheck.empty) {
+                buttonHTML = `<button class="btn" onclick="likeBack('${likerId}')">💜 Like Back</button>`;
+            } else {
+                buttonHTML = `<button class="btn" onclick="viewProfile('${likerId}')">👀 View Profile</button>`;
+            }
+
+            box.innerHTML += `
+                <div class="user-card">
+                    <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
+                    <div style="flex:1">
+                        <div class="name">${u.name} ${u.surname}</div>
+                        <div style="color:gray">${u.gender}</div>
+                        ${buttonHTML}
+                    </div>
                 </div>
             `;
-
-            box.appendChild(card);
         });
     });
 
@@ -222,13 +229,15 @@ async function likeBack(uid) {
         time: Date.now()
     });
 
-    alert("Liked back!");
+    // UI REFRESH
+    loadLikes(auth.currentUser.uid);
 }
 
-/* LOGOUT */
-function logout() {
-    auth.signOut().then(() => location.href = "login.html");
+/* VIEW PROFILE */
+function viewProfile(uid) {
+    window.location = "view-profile.html?id=" + uid;
 }
+
 </script>
 
 </body>
