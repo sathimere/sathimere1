@@ -133,7 +133,7 @@ Sathi Mere
 <a href="wallet.html">Wallet</a>
 <a href="like.html">Likes</a>
 <a href="chat.html">Chats</a>
-<a href="referral.html">Referral</a> <!-- SHIFTED HERE -->
+<a href="referral.html">Referral</a>
 <a href="help.html">Help & Support</a>
 <a href="privacy.html">Privacy Policy</a>
 <a onclick="logout()">Logout</a>
@@ -144,8 +144,8 @@ Sathi Mere
 
 <!-- INSTAGRAM STYLE NAV -->
 <div class="bottom-nav">
-    <div class="nav-item" onclick="location.href='like.html'">
-        <span id="navHeart">🤍</span> Like
+    <div class="nav-item" onclick="location.href='index.html'">
+        <span id="navHeart">🤍</span> Home
     </div>
     <div class="nav-item" onclick="location.href='chat.html'">
         <span>💬</span> Chat
@@ -179,14 +179,18 @@ let opposite = myGender === "Male" ? "Female" : "Male";
 
 db.collection("users")
 .where("gender", "==", opposite)
-.onSnapshot(snap => {
+.onSnapshot(async snap => {
 
     list.innerHTML = "";
     ALL_USERS = [];
 
+    let likedDocs = await db.collection("likes").where("from", "==", myId).get();
+    let likedSet = new Set(likedDocs.docs.map(d => d.data().to));
+
     snap.forEach(doc => {
         let u = doc.data();
         u.uid = doc.id;
+        u.likedByMe = likedSet.has(u.uid); // check if already liked
         ALL_USERS.push(u);
     });
 
@@ -199,28 +203,39 @@ function renderUsers(users, myId) {
 const list = document.getElementById("userList");
 list.innerHTML = "";
 
-users.forEach(u => {
+users.forEach(async u => {
     let uid = u.uid;
+
+    // Check if they liked me
+    let likedBackDocs = await db.collection("likes")
+        .where("from", "==", uid)
+        .where("to", "==", myId)
+        .get();
+    let likedBack = !likedBackDocs.empty;
 
     let card = document.createElement("div");
     card.className = "user-card";
+
+    let likeBtnHTML = "";
+    if(u.likedByMe && likedBack){
+        likeBtnHTML = `<button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>`;
+    } else if(u.likedByMe){
+        likeBtnHTML = `<button class="btn btn-disabled">❤️ Liked</button>`;
+    } else {
+        likeBtnHTML = `<button class="btn" onclick="toggleLike('${uid}')">🤍 Like</button>`;
+    }
 
     card.innerHTML = `
         <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
         <div style="flex:1">
             <div class="name">${u.name} ${u.surname}</div>
             <div style="color:gray">${u.gender}</div>
-
-            <button id="like_${uid}" class="btn" onclick="toggleLike('${uid}')">🤍 Like</button>
-
-            <button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>
+            ${likeBtnHTML}
             <button id="btn_${uid}" class="btn">✉ Chat Request</button>
         </div>
     `;
 
     list.appendChild(card);
-
-    checkStatus(myId, uid);
 
     document.getElementById("btn_" + uid).onclick = () =>
         sendRequest(myId, uid, u.gender);
@@ -229,25 +244,14 @@ users.forEach(u => {
 
 /* LIKE BUTTON → HEART TOGGLE */
 async function toggleLike(uid) {
-
-let btn = document.getElementById("like_" + uid);
-
-/* Already liked */
-if(btn.innerText.includes("❤️")){
-    alert("Already liked!");
-    return;
-}
-
-/* New like */
+let btn = document.querySelector(`#userList #like_${uid}`);
 await db.collection("likes").add({
     from: auth.currentUser.uid,
     to: uid,
     time: Date.now()
 });
-
-btn.innerHTML = "❤️ Liked";
+loadUsers(auth.currentUser.uid);
 document.getElementById("navHeart").innerHTML = "❤️";
-
 }
 
 /* SEARCH */
@@ -265,23 +269,20 @@ function viewProfile(uid) {
 window.location = "view-profile.html?id=" + uid;
 }
 
-/* CHECK CHAT */
+/* CHAT STATUS */
 async function checkStatus(myId, otherId) {
 let btn = document.getElementById("btn_" + otherId);
-
 let doc = await db.collection("chatRequests")
 .doc(myId + "_" + otherId)
 .get();
 
 if (doc.exists) {
     let status = doc.data().status;
-
     if (status === "pending") {
         btn.innerText = "Request Sent";
         btn.disabled = true;
         btn.classList.add("btn-disabled");
     }
-
     if (status === "accepted") {
         btn.innerText = "Chat Now";
         btn.onclick = () => window.location = "chat-room.html?u=" + otherId;
@@ -289,52 +290,40 @@ if (doc.exists) {
 }
 }
 
-/* CHAT REQUEST */
+/* SEND CHAT REQUEST */
 async function sendRequest(myId, toId, myGender) {
-
 if(myGender === "Female") {
-    await db.collection("chatRequests")
-    .doc(myId + "_" + toId)
-    .set({
+    await db.collection("chatRequests").doc(myId + "_" + toId).set({
         from: myId,
         to: toId,
         status: "pending",
         timestamp: Date.now(),
         paidBy: "Male"
     });
-
     alert("Chat request sent! (No deduction for Female)");
     checkStatus(myId, toId);
     return;
 }
-
 let wallet = await db.collection("wallet").doc(myId).get();
 let balance = wallet.exists ? wallet.data().balance : 0;
-
 if (balance < 10) {
     alert("Insufficient balance! Please add money.");
     return;
 }
-
 await db.collection("wallet").doc(myId).update({ balance: balance - 10 });
-
-await db.collection("chatRequests")
-.doc(myId + "_" + toId)
-.set({
+await db.collection("chatRequests").doc(myId + "_" + toId).set({
     from: myId,
     to: toId,
     status: "pending",
     timestamp: Date.now(),
     paidBy: "Male"
 });
-
 await db.collection("history").add({
     uid: myId,
     amount: -10,
     type: "Chat Request",
     time: new Date()
 });
-
 alert("Chat request sent! ₹10 deducted.");
 checkStatus(myId, toId);
 }
