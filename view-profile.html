@@ -62,9 +62,10 @@ body {
 
 /* Profile Image */
 .profile-img {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    border-radius: 15px;
     object-fit: cover;
     border: 4px solid #ff1493;
     margin-bottom: 15px;
@@ -72,7 +73,6 @@ body {
 
 /* User Info */
 .name { font-weight: bold; font-size: 22px; color: #ff1493; margin-bottom: 5px; }
-.info { font-size: 16px; color: gray; margin-bottom: 15px; }
 
 /* Buttons */
 .btn {
@@ -94,116 +94,145 @@ body {
 
 <body>
 
-<!-- HEADER -->
 <div class="header">
     <span class="back-btn" onclick="history.back()">←</span>
     Profile
     <button class="logout-btn" onclick="logout()">Logout</button>
 </div>
 
-<!-- CONTENT -->
 <div class="container" id="profileContainer">
     Loading profile...
 </div>
 
 <script>
-
-// Get user id from URL
 const params = new URLSearchParams(window.location.search);
 const profileId = params.get("id");
 
-// Auth check
-auth.onAuthStateChanged(async (user) => {
-    if (!user) return window.location = "login.html";
+auth.onAuthStateChanged(async (user)=>{
+    if(!user) return window.location="login.html";
     loadProfile(user.uid);
 });
 
-// Load profile data
-async function loadProfile(myId) {
-    const container = document.getElementById("profileContainer");
+async function loadProfile(myId){
+    const container=document.getElementById("profileContainer");
 
-    if (!profileId) {
-        container.innerHTML = "<p style='color:red'>No profile selected.</p>";
+    if(!profileId){
+        container.innerHTML="<p style='color:red'>No profile selected.</p>";
         return;
     }
 
-    const doc = await db.collection("users").doc(profileId).get();
-
-    if (!doc.exists) {
-        container.innerHTML = "<p style='color:red'>Profile not found.</p>";
+    const doc=await db.collection("users").doc(profileId).get();
+    if(!doc.exists){
+        container.innerHTML="<p style='color:red'>Profile not found.</p>";
         return;
     }
 
-    const u = doc.data();
+    const u=doc.data();
 
-    container.innerHTML = `
+    container.innerHTML=`
         <img class="profile-img" src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
-        <div class="name">${u.name} ${u.surname}</div>
-        <div class="info">Gender: ${u.gender}</div>
-        <div class="info">Age: ${u.age || '-'}</div>
+        <div class="name">${u.name}</div>
         <button id="likeBtn" class="btn">💜 Like</button>
         <button id="chatBtn" class="btn">Chat Request</button>
     `;
 
-    // Check like status (disable if already liked)
-    const likeSnap = await db.collection("likes")
-                             .where("from","==", myId)
-                             .where("to","==", profileId)
-                             .get();
-    if (!likeSnap.empty) {
-        const btn = document.getElementById("likeBtn");
-        btn.innerText = "Liked 💜";
-        btn.disabled = true;
+    // Like logic
+    const likeSnap=await db.collection("likes")
+                           .where("from","==",myId)
+                           .where("to","==",profileId)
+                           .get();
+    if(!likeSnap.empty){
+        const btn=document.getElementById("likeBtn");
+        btn.innerText="Liked 💜";
+        btn.disabled=true;
         btn.classList.add("btn-disabled");
     }
 
-    // Like button
-    document.getElementById("likeBtn").onclick = async () => {
+    document.getElementById("likeBtn").onclick=async ()=>{
         await db.collection("likes").add({
             from: myId,
             to: profileId,
             time: Date.now()
         });
         alert("Liked!");
-        const btn = document.getElementById("likeBtn");
-        btn.innerText = "Liked 💜";
-        btn.disabled = true;
+        const btn=document.getElementById("likeBtn");
+        btn.innerText="Liked 💜";
+        btn.disabled=true;
         btn.classList.add("btn-disabled");
     };
 
-    // Chat button
-    const chatBtn = document.getElementById("chatBtn");
-    const chatDoc = await db.collection("chatRequests").doc(myId + "_" + profileId).get();
-    if (chatDoc.exists) {
-        const status = chatDoc.data().status;
-        if (status === "pending") {
-            chatBtn.innerText = "Request Sent";
-            chatBtn.disabled = true;
+    // Chat request logic
+    const chatBtn=document.getElementById("chatBtn");
+    const chatDoc=await db.collection("chatRequests").doc(myId+"_"+profileId).get();
+
+    if(chatDoc.exists){
+        const status=chatDoc.data().status;
+        if(status==="pending"){
+            chatBtn.innerText="Request Sent";
+            chatBtn.disabled=true;
             chatBtn.classList.add("btn-disabled");
         }
-        if (status === "accepted") {
-            chatBtn.innerText = "Chat Now";
-            chatBtn.onclick = () => window.location = "chat-room.html?u=" + profileId;
+        if(status==="accepted"){
+            chatBtn.innerText="Chat Now";
+            chatBtn.onclick=()=>window.location="chat-room.html?u="+profileId;
         }
     }
 
-    chatBtn.onclick = async () => {
-        await db.collection("chatRequests").doc(myId + "_" + profileId).set({
+    chatBtn.onclick=async ()=>{
+        const me=await db.collection("users").doc(myId).get();
+        const myGender=me.data().gender;
+
+        if(myGender==="Female"){
+            // Female request → free
+            await db.collection("chatRequests").doc(myId+"_"+profileId).set({
+                from: myId,
+                to: profileId,
+                status: "pending",
+                timestamp: Date.now(),
+                paidBy:"Male"
+            });
+            alert("Chat request sent! (Female = Free)");
+            chatBtn.innerText="Request Sent";
+            chatBtn.disabled=true;
+            chatBtn.classList.add("btn-disabled");
+            return;
+        }
+
+        // Male request → deduct ₹10
+        let wallet=await db.collection("wallet").doc(myId).get();
+        let balance=wallet.exists? wallet.data().balance :0;
+
+        if(balance<10){
+            alert("Insufficient balance! Please add money.");
+            return;
+        }
+
+        await db.collection("wallet").doc(myId).update({balance: balance-10});
+
+        await db.collection("chatRequests").doc(myId+"_"+profileId).set({
             from: myId,
             to: profileId,
             status: "pending",
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            paidBy:"Male"
         });
-        alert("Chat request sent!");
-        chatBtn.innerText = "Request Sent";
-        chatBtn.disabled = true;
+
+        await db.collection("history").add({
+            uid: myId,
+            amount:-10,
+            type:"Chat Request",
+            time:new Date()
+        });
+
+        alert("Chat request sent! ₹10 deducted.");
+        chatBtn.innerText="Request Sent";
+        chatBtn.disabled=true;
         chatBtn.classList.add("btn-disabled");
     };
 }
 
-// Logout
-function logout() {
-    auth.signOut().then(() => window.location = "login.html");
+function logout(){
+    auth.signOut().then(()=>window.location="login.html");
 }
 </script>
 
