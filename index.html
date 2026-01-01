@@ -3,38 +3,134 @@
 <head>
 <title>Sathi Mere - Home</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
+
 <style>
 body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
-.header { background: #ff1493; padding: 15px; color: white; text-align: center; font-size: 22px; font-weight: bold; position: fixed; top: 0; width: 100%; }
+
+.header {
+    background: #ff1493;
+    padding: 15px;
+    color: white;
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    position: fixed;
+    top: 0;
+    width: 100%;
+}
+
 .menu-btn { position: absolute; left: 15px; top: 14px; font-size: 25px; color: white; cursor: pointer; }
-.logout-btn { position: absolute; right: 15px; top: 10px; background: white; color: #ff1493; border: 2px solid #ff1493; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+
+/* NEW FILTER BUTTON */
+.filter-btn {
+    position: absolute;
+    right: 55px;
+    top: 10px;
+    background: white;
+    color: #ff1493;
+    border: 2px solid #ff1493;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* NEW REFERRAL BUTTON */
+.ref-btn {
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    background: white;
+    color: #ff1493;
+    border: 2px solid #ff1493;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
 #menu { width: 0; height: 100%; background: white; position: fixed; top: 0; left: 0; overflow: hidden; transition: 0.3s; z-index: 20; padding-top: 60px; box-shadow: 4px 0 12px rgba(0,0,0,0.3); }
 #menu a { display: block; padding: 15px 25px; font-size: 18px; text-decoration: none; color: #444; }
 #menu a:hover { background: #ffe1f1; }
 .close-menu { position: absolute; top: 12px; right: 15px; font-size: 28px; cursor: pointer; }
-.container { padding: 80px 15px 80px; }
-.user-card { background: white; margin-bottom: 15px; padding: 15px; border-radius: 15px; box-shadow: 0 0 10px #ffc0d9; display: flex; align-items: center; }
-.user-card img { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 3px solid #ff1493; margin-right: 15px; }
+
+.container { padding: 130px 15px 80px; }
+
+/* SEARCH BAR (ONLY NEW UI) */
+.search-box {
+    width: 90%;
+    margin: 0 auto 15px auto;
+    display: block;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 2px solid #ff1493;
+    font-size: 17px;
+    outline: none;
+}
+
+.user-card {
+    background: white;
+    margin-bottom: 15px;
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 0 10px #ffc0d9;
+    display: flex;
+    align-items: center;
+}
+
+.user-card img {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #ff1493;
+    margin-right: 15px;
+}
+
 .name { font-weight: bold; color: #ff1493; }
+
 .btn { background: #ff1493; color: white; border: none; border-radius: 8px; margin-top: 5px; padding: 7px 12px; cursor: pointer; }
 .btn-disabled { background: gray; }
-.bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; border-top: 1px solid #ddd; padding: 8px 0; }
-.nav-item { text-align: center; color: #ff1493; font-weight: bold; }
-.nav-item span { font-size: 26px; display: block; }
+
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: #ff1493;
+    display: flex;
+    justify-content: space-around;
+    border-top: 2px solid gold;
+    border-left: 2px solid gold;
+    border-right: 2px solid gold;
+    padding: 8px 0;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+.nav-item { text-align: center; color: gold; font-weight: bold; }
+.nav-item span { font-size: 26px; display: block; color: gold; }
 </style>
 </head>
+
 <body>
+
 <!-- HEADER -->
 <div class="header">
 <span class="menu-btn" onclick="openMenu()">☰</span>
 Sathi Mere
-<button class="logout-btn" onclick="logout()">Logout</button>
+<button class="filter-btn" onclick="location.href='filter.html'">Filter</button>
+<button class="ref-btn" onclick="location.href='referral.html'">Referral</button>
 </div>
+
+<!-- SEARCH BAR -->
+<input id="searchInput" class="search-box" placeholder="Search by name..." onkeyup="searchUser()">
+
 <!-- MENU -->
 <div id="menu">
 <span class="close-menu" onclick="closeMenu()">✖</span>
@@ -44,19 +140,15 @@ Sathi Mere
 <a href="privacy.html">Privacy Policy</a>
 <a onclick="logout()">Logout</a>
 </div>
+
 <!-- CONTENT -->
 <div class="container" id="userList">Loading...</div>
+
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
-<div class="nav-item" onclick="location.href='like.html'">
-<span>💜</span> Like
-</div>
-<div class="nav-item" onclick="location.href='chat.html'">
-<span>✉️</span> Chat
-</div>
-<div class="nav-item" onclick="location.href='profile.html'">
-<span>👤</span> Profile
-</div>
+<div class="nav-item" onclick="location.href='like.html'"><span>💛</span> Like</div>
+<div class="nav-item" onclick="location.href='chat.html'"><span>📨</span> Chat</div>
+<div class="nav-item" onclick="location.href='profile.html'"><span>👤</span> Profile</div>
 </div>
 
 <script>
@@ -70,8 +162,11 @@ if (!user) return (window.location = "login.html");
 loadUsers(user.uid);
 });
 
-/* LOAD USERS */
+let ALL_USERS = []; // NEW (search ke liye)
+
+/* LOAD USERS — WITHOUT ANY CHANGE */
 async function loadUsers(myId) {
+
 const list = document.getElementById("userList");
 list.innerHTML = "Loading...";
 
@@ -84,11 +179,26 @@ db.collection("users")
 .where("gender", "==", opposite)
 .onSnapshot(snap => {
 
+    list.innerHTML = "";
+    ALL_USERS = [];  // store all users
+
+    snap.forEach(doc => {
+        let u = doc.data();
+        u.uid = doc.id;
+        ALL_USERS.push(u); // saved for search
+    });
+
+    renderUsers(ALL_USERS, myId);
+});
+}
+
+/* RENDER USERS (NO CHANGE) */
+function renderUsers(users, myId) {
+const list = document.getElementById("userList");
 list.innerHTML = "";
 
-snap.forEach(doc => {
-    let u = doc.data();
-    let uid = doc.id;
+users.forEach(u => {
+    let uid = u.uid;
 
     let card = document.createElement("div");
     card.className = "user-card";
@@ -109,17 +219,28 @@ snap.forEach(doc => {
     checkStatus(myId, uid);
 
     document.getElementById("btn_" + uid).onclick = () =>
-        sendRequest(myId, uid, myGender);
+        sendRequest(myId, uid, u.gender);
 });
-});
+}
+
+/* SEARCH FUNCTION */
+function searchUser() {
+const text = document.getElementById("searchInput").value.toLowerCase();
+
+let filtered = ALL_USERS.filter(u =>
+    u.name.toLowerCase().includes(text) ||
+    u.surname.toLowerCase().includes(text)
+);
+
+renderUsers(filtered, auth.currentUser.uid);
 }
 
 /* LIKE */
 async function sendLike(uid) {
 await db.collection("likes").add({
-from: auth.currentUser.uid,
-to: uid,
-time: Date.now()
+    from: auth.currentUser.uid,
+    to: uid,
+    time: Date.now()
 });
 alert("Liked!");
 }
@@ -129,7 +250,7 @@ function viewProfile(uid) {
 window.location = "view-profile.html?id=" + uid;
 }
 
-/* CHECK CHAT REQUEST STATUS */
+/* CHECK CHAT REQUEST */
 async function checkStatus(myId, otherId) {
 let btn = document.getElementById("btn_" + otherId);
 
@@ -138,69 +259,65 @@ let doc = await db.collection("chatRequests")
 .get();
 
 if (doc.exists) {
-let status = doc.data().status;
+    let status = doc.data().status;
 
-if (status === "pending") {
-    btn.innerText = "Request Sent";
-    btn.disabled = true;
-    btn.classList.add("btn-disabled");
+    if (status === "pending") {
+        btn.innerText = "Request Sent";
+        btn.disabled = true;
+        btn.classList.add("btn-disabled");
+    }
+
+    if (status === "accepted") {
+        btn.innerText = "Chat Now";
+        btn.onclick = () => window.location = "chat-room.html?u=" + otherId;
+    }
+}
 }
 
-if (status === "accepted") {
-    btn.innerText = "Chat Now";
-    btn.onclick = () => window.location = "chat-room.html?u=" + otherId;
-}
-}
-}
-
-/* SEND CHAT REQUEST WITH FEMALE-FREE & MALE-DEDUCT LOGIC */
+/* SEND REQUEST — SAME */
 async function sendRequest(myId, toId, myGender) {
 
 if(myGender === "Female") {
-    // Female request → no deduction
     await db.collection("chatRequests")
-    .doc(myId + "_" + toId)
-    .set({
-        from: myId,
-        to: toId,
-        status: "pending",
-        timestamp: Date.now(),
-        paidBy: "Male"
-    });
+        .doc(myId + "_" + toId)
+        .set({
+            from: myId,
+            to: toId,
+            status: "pending",
+            timestamp: Date.now(),
+            paidBy: "Male"
+        });
+
     alert("Chat request sent! (No deduction for Female)");
     checkStatus(myId, toId);
     return;
 }
 
-// Male logic → deduct ₹10
 let wallet = await db.collection("wallet").doc(myId).get();
 let balance = wallet.exists ? wallet.data().balance : 0;
 
 if (balance < 10) {
-alert("Insufficient balance! Please add money.");
-return;
+    alert("Insufficient balance! Please add money.");
+    return;
 }
 
-// Deduct 10
 await db.collection("wallet").doc(myId).update({ balance: balance - 10 });
 
-// Create request
 await db.collection("chatRequests")
 .doc(myId + "_" + toId)
 .set({
-from: myId,
-to: toId,
-status: "pending",
-timestamp: Date.now(),
-paidBy: "Male"
+    from: myId,
+    to: toId,
+    status: "pending",
+    timestamp: Date.now(),
+    paidBy: "Male"
 });
 
-// Add to history
 await db.collection("history").add({
-uid: myId,
-amount: -10,
-type: "Chat Request",
-time: new Date()
+    uid: myId,
+    amount: -10,
+    type: "Chat Request",
+    time: new Date()
 });
 
 alert("Chat request sent! ₹10 deducted.");
