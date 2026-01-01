@@ -123,41 +123,44 @@ Likes
 </div>
 
 <script>
+let ALL_USERS = []; // store all users for reference
 
-/* LOGIN CHECK */
-auth.onAuthStateChanged(user => {
+auth.onAuthStateChanged(async user => {
     if (!user) return location.href = "login.html";
     loadLikes(user.uid);
 });
 
-/* LOAD ALL LIKES */
-function loadLikes(myId) {
+async function loadLikes(myId) {
 
-    /* OUTGOING LIST */
+    const outgoingBox = document.getElementById("outgoingList");
+    const incomingBox = document.getElementById("incomingList");
+    outgoingBox.innerHTML = "Loading...";
+    incomingBox.innerHTML = "Loading...";
+
+    // Fetch all users once for reference
+    const usersSnap = await db.collection("users").get();
+    usersSnap.forEach(doc => {
+        let u = doc.data();
+        u.uid = doc.id;
+        ALL_USERS.push(u);
+    });
+
+    // --- OUTGOING LIKES (YOU LIKED) ---
     db.collection("likes")
       .where("from", "==", myId)
       .orderBy("time", "desc")
-      .onSnapshot(async snap => {
-
-        const box = document.getElementById("outgoingList");
-        box.innerHTML = "";
-
+      .onSnapshot(snap => {
+        outgoingBox.innerHTML = "";
         if (snap.empty) {
-            box.innerHTML = "<div style='color:gray;'>No likes yet.</div>";
+            outgoingBox.innerHTML = "<div style='color:gray;'>No likes yet.</div>";
             return;
         }
-
-        let html = "";
-
-        for (let doc of snap.docs) {
+        snap.forEach(doc => {
             let data = doc.data();
-            let userDoc = await db.collection("users").doc(data.to).get();
+            let u = ALL_USERS.find(x => x.uid === data.to);
+            if (!u) return;
 
-            if (!userDoc.exists) continue;
-
-            let u = userDoc.data();
-
-            html += `
+            outgoingBox.innerHTML += `
                 <div class="user-card">
                     <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
                     <div style="flex:1">
@@ -167,81 +170,65 @@ function loadLikes(myId) {
                     </div>
                 </div>
             `;
-        }
-
-        box.innerHTML = html;
+        });
     });
 
-
-    /* INCOMING LIST */
+    // --- INCOMING LIKES (THEY LIKED YOU) ---
     db.collection("likes")
       .where("to", "==", myId)
       .orderBy("time", "desc")
       .onSnapshot(async snap => {
-
-        const box = document.getElementById("incomingList");
-        box.innerHTML = "";
-
+        incomingBox.innerHTML = "";
         if (snap.empty) {
-            box.innerHTML = "<div style='color:gray;'>No one liked you yet.</div>";
+            incomingBox.innerHTML = "<div style='color:gray;'>No one liked you yet.</div>";
             return;
         }
 
-        let html = "";
-
         for (let doc of snap.docs) {
             let data = doc.data();
-            let likerId = data.from;
+            let liker = ALL_USERS.find(x => x.uid === data.from);
+            if (!liker) continue;
 
-            let userDoc = await db.collection("users").doc(likerId).get();
-            if (!userDoc.exists) continue;
-
-            let u = userDoc.data();
-
-            // CHECK LIKE BACK
-            let likeBackCheck = await db.collection("likes")
-              .where("from", "==", myId)
-              .where("to", "==", likerId)
-              .get();
+            // Check if you already liked back
+            let likeBackSnap = await db.collection("likes")
+                .where("from", "==", myId)
+                .where("to", "==", data.from)
+                .get();
 
             let buttonHTML = "";
-
-            if (likeBackCheck.empty) {
-                buttonHTML = `<button class="btn" onclick="likeBack('${likerId}')">💜 Like Back</button>`;
+            if (likeBackSnap.empty) {
+                buttonHTML = `<button class="btn" onclick="likeBack('${data.from}')">💜 Like Back</button>`;
             } else {
-                buttonHTML = `<button class="btn" onclick="viewProfile('${likerId}')">👀 View Profile</button>`;
+                buttonHTML = `<button class="btn" onclick="viewProfile('${data.from}')">👀 View Profile</button>`;
             }
 
-            html += `
+            incomingBox.innerHTML += `
                 <div class="user-card">
-                    <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
+                    <img src="${liker.photo || 'https://i.imgur.com/6VBx3io.png'}">
                     <div style="flex:1">
-                        <div class="name">${u.name} ${u.surname}</div>
-                        <div style="color:gray">${u.gender}</div>
+                        <div class="name">${liker.name} ${liker.surname}</div>
+                        <div style="color:gray">${liker.gender}</div>
                         ${buttonHTML}
                     </div>
                 </div>
             `;
         }
-
-        box.innerHTML = html;
     });
 }
 
-/* LIKE BACK */
 async function likeBack(uid) {
     await db.collection("likes").add({
         from: auth.currentUser.uid,
         to: uid,
         time: Date.now()
     });
+
+    loadLikes(auth.currentUser.uid); // refresh UI
 }
 
-/* VIEW PROFILE */
 function viewProfile(uid) {
     window.location = "view-profile.html?id=" + uid;
 }
-
 </script>
 
 </body>
