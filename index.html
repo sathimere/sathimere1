@@ -194,7 +194,7 @@ db.collection("users")
 });
 }
 
-/* RENDER */
+/* RENDER USERS */
 function renderUsers(users, myId) {
 const list = document.getElementById("userList");
 list.innerHTML = "";
@@ -211,7 +211,7 @@ users.forEach(u => {
             <div class="name">${u.name} ${u.surname}</div>
             <div style="color:gray">${u.gender}</div>
 
-            <button id="like_${uid}" class="btn" onclick="toggleLike('${uid}')">🤍 Like</button>
+            <button id="like_${uid}" class="btn" onclick="toggleLike('${uid}','${u.name}','${u.photo}')">🤍 Like</button>
 
             <button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>
             <button id="btn_${uid}" class="btn">✉ Chat Request</button>
@@ -227,8 +227,8 @@ users.forEach(u => {
 });
 }
 
-/* LIKE BUTTON */
-async function toggleLike(uid) {
+/* FIXED LIKE SYSTEM */
+async function toggleLike(uid, name, photo) {
 
 let myId = auth.currentUser.uid;
 let btn = document.getElementById("like_" + uid);
@@ -244,10 +244,12 @@ if (!exists.empty) {
     return;
 }
 
-/* NEW LIKE */
+/* SAVE LIKE */
 await db.collection("likes").add({
     from: myId,
     to: uid,
+    name: name,
+    photo: photo,
     time: Date.now()
 });
 
@@ -351,4 +353,4 @@ auth.signOut().then(() => { window.location = "login.html"; });
 </script>
 
 </body>
-</html>
+    </html>
