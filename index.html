@@ -84,7 +84,7 @@ body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
 .btn { background: #ff1493; color: white; border: none; border-radius: 8px; margin-top: 5px; padding: 7px 12px; cursor: pointer; }
 .btn-disabled { background: gray; }
 
-/* NEW INSTAGRAM STYLE BOTTOM NAV */
+/* BOTTOM NAV */
 .bottom-nav {
     position: fixed;
     bottom: 0;
@@ -142,10 +142,10 @@ Sathi Mere
 <!-- USER LIST -->
 <div class="container" id="userList">Loading...</div>
 
-<!-- INSTAGRAM STYLE NAV -->
+<!-- BOTTOM NAV ORIGINAL -->
 <div class="bottom-nav">
-    <div class="nav-item" onclick="location.href='index.html'">
-        <span id="navHeart">🤍</span> Home
+    <div class="nav-item" onclick="location.href='like.html'">
+        <span id="navHeart">🤍</span> Like
     </div>
     <div class="nav-item" onclick="location.href='chat.html'">
         <span>💬</span> Chat
@@ -162,177 +162,165 @@ function closeMenu(){ menu.style.width = "0"; }
 
 /* AUTH CHECK */
 auth.onAuthStateChanged(async (user) => {
-if (!user) return (window.location = "login.html");
-loadUsers(user.uid);
+    if (!user) return window.location = "login.html";
+    loadUsers(user.uid);
 });
 
 let ALL_USERS = [];
 
 /* LOAD USERS */
 async function loadUsers(myId) {
-const list = document.getElementById("userList");
-list.innerHTML = "Loading...";
+    const list = document.getElementById("userList");
+    list.innerHTML = "Loading...";
 
-let me = await db.collection("users").doc(myId).get();
-let myGender = me.data().gender;
-let opposite = myGender === "Male" ? "Female" : "Male";
+    let me = await db.collection("users").doc(myId).get();
+    let myGender = me.data().gender;
+    let opposite = myGender === "Male" ? "Female" : "Male";
 
-db.collection("users")
-.where("gender", "==", opposite)
-.onSnapshot(async snap => {
+    db.collection("users")
+      .where("gender", "==", opposite)
+      .onSnapshot(snap => {
+          list.innerHTML = "";
+          ALL_USERS = [];
 
+          snap.forEach(doc => {
+              let u = doc.data();
+              u.uid = doc.id;
+              ALL_USERS.push(u);
+          });
+
+          renderUsers(ALL_USERS, myId);
+      });
+}
+
+/* RENDER USERS */
+async function renderUsers(users, myId) {
+    const list = document.getElementById("userList");
     list.innerHTML = "";
-    ALL_USERS = [];
 
-    let likedDocs = await db.collection("likes").where("from", "==", myId).get();
-    let likedSet = new Set(likedDocs.docs.map(d => d.data().to));
+    for (let u of users) {
+        let uid = u.uid;
 
-    snap.forEach(doc => {
-        let u = doc.data();
-        u.uid = doc.id;
-        u.likedByMe = likedSet.has(u.uid); // check if already liked
-        ALL_USERS.push(u);
-    });
+        // Check if current user has already liked this person
+        let likedSnap = await db.collection("likes")
+            .where("from", "==", myId)
+            .where("to", "==", uid)
+            .get();
 
-    renderUsers(ALL_USERS, myId);
-});
-}
+        // Check if this user has liked current user
+        let likedBackSnap = await db.collection("likes")
+            .where("from", "==", uid)
+            .where("to", "==", myId)
+            .get();
 
-/* RENDER */
-function renderUsers(users, myId) {
-const list = document.getElementById("userList");
-list.innerHTML = "";
+        let likeBtnHTML = "";
+        if (!likedSnap.empty) {
+            likeBtnHTML = `<button class="btn btn-disabled">❤️ Liked</button>`;
+        } else {
+            likeBtnHTML = `<button class="btn" onclick="toggleLike('${uid}')">🤍 Like</button>`;
+        }
 
-users.forEach(async u => {
-    let uid = u.uid;
+        // If both liked each other → show View Profile button
+        if (!likedSnap.empty && !likedBackSnap.empty) {
+            likeBtnHTML = `<button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>`;
+        }
 
-    // Check if they liked me
-    let likedBackDocs = await db.collection("likes")
-        .where("from", "==", uid)
-        .where("to", "==", myId)
-        .get();
-    let likedBack = !likedBackDocs.empty;
+        let card = document.createElement("div");
+        card.className = "user-card";
 
-    let card = document.createElement("div");
-    card.className = "user-card";
+        card.innerHTML = `
+            <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
+            <div style="flex:1">
+                <div class="name">${u.name} ${u.surname}</div>
+                <div style="color:gray">${u.gender}</div>
+                ${likeBtnHTML}
+                <button id="btn_${uid}" class="btn">✉ Chat Request</button>
+                <button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>
+            </div>
+        `;
 
-    let likeBtnHTML = "";
-    if(u.likedByMe && likedBack){
-        likeBtnHTML = `<button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>`;
-    } else if(u.likedByMe){
-        likeBtnHTML = `<button class="btn btn-disabled">❤️ Liked</button>`;
-    } else {
-        likeBtnHTML = `<button class="btn" onclick="toggleLike('${uid}')">🤍 Like</button>`;
+        list.appendChild(card);
+
+        document.getElementById("btn_" + uid).onclick = () =>
+            sendRequest(myId, uid, u.gender);
     }
-
-    card.innerHTML = `
-        <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
-        <div style="flex:1">
-            <div class="name">${u.name} ${u.surname}</div>
-            <div style="color:gray">${u.gender}</div>
-            ${likeBtnHTML}
-            <button id="btn_${uid}" class="btn">✉ Chat Request</button>
-        </div>
-    `;
-
-    list.appendChild(card);
-
-    document.getElementById("btn_" + uid).onclick = () =>
-        sendRequest(myId, uid, u.gender);
-});
 }
 
-/* LIKE BUTTON → HEART TOGGLE */
+/* LIKE BUTTON */
 async function toggleLike(uid) {
-let btn = document.querySelector(`#userList #like_${uid}`);
-await db.collection("likes").add({
-    from: auth.currentUser.uid,
-    to: uid,
-    time: Date.now()
-});
-loadUsers(auth.currentUser.uid);
-document.getElementById("navHeart").innerHTML = "❤️";
+    let btn = document.querySelector(`#userList #like_${uid}`);
+    await db.collection("likes").add({
+        from: auth.currentUser.uid,
+        to: uid,
+        time: Date.now()
+    });
+    loadUsers(auth.currentUser.uid); // refresh UI
 }
 
 /* SEARCH */
 function searchUser() {
-const text = document.getElementById("searchInput").value.toLowerCase();
-let filtered = ALL_USERS.filter(u =>
-    u.name.toLowerCase().includes(text) ||
-    u.surname.toLowerCase().includes(text)
-);
-renderUsers(filtered, auth.currentUser.uid);
+    const text = document.getElementById("searchInput").value.toLowerCase();
+    const filtered = ALL_USERS.filter(u =>
+        u.name.toLowerCase().includes(text) ||
+        u.surname.toLowerCase().includes(text)
+    );
+    renderUsers(filtered, auth.currentUser.uid);
 }
 
 /* VIEW PROFILE */
 function viewProfile(uid) {
-window.location = "view-profile.html?id=" + uid;
+    window.location = "view-profile.html?id=" + uid;
 }
 
-/* CHAT STATUS */
-async function checkStatus(myId, otherId) {
-let btn = document.getElementById("btn_" + otherId);
-let doc = await db.collection("chatRequests")
-.doc(myId + "_" + otherId)
-.get();
-
-if (doc.exists) {
-    let status = doc.data().status;
-    if (status === "pending") {
-        btn.innerText = "Request Sent";
-        btn.disabled = true;
-        btn.classList.add("btn-disabled");
-    }
-    if (status === "accepted") {
-        btn.innerText = "Chat Now";
-        btn.onclick = () => window.location = "chat-room.html?u=" + otherId;
-    }
-}
-}
-
-/* SEND CHAT REQUEST */
+/* CHAT REQUEST */
 async function sendRequest(myId, toId, myGender) {
-if(myGender === "Female") {
-    await db.collection("chatRequests").doc(myId + "_" + toId).set({
-        from: myId,
-        to: toId,
-        status: "pending",
-        timestamp: Date.now(),
-        paidBy: "Male"
+    if (myGender === "Female") {
+        await db.collection("chatRequests")
+            .doc(myId + "_" + toId)
+            .set({
+                from: myId,
+                to: toId,
+                status: "pending",
+                timestamp: Date.now(),
+                paidBy: "Male"
+            });
+        alert("Chat request sent! (No deduction for Female)");
+        return;
+    }
+
+    let wallet = await db.collection("wallet").doc(myId).get();
+    let balance = wallet.exists ? wallet.data().balance : 0;
+
+    if (balance < 10) {
+        alert("Insufficient balance! Please add money.");
+        return;
+    }
+
+    await db.collection("wallet").doc(myId).update({ balance: balance - 10 });
+    await db.collection("chatRequests")
+        .doc(myId + "_" + toId)
+        .set({
+            from: myId,
+            to: toId,
+            status: "pending",
+            timestamp: Date.now(),
+            paidBy: "Male"
+        });
+
+    await db.collection("history").add({
+        uid: myId,
+        amount: -10,
+        type: "Chat Request",
+        time: new Date()
     });
-    alert("Chat request sent! (No deduction for Female)");
-    checkStatus(myId, toId);
-    return;
-}
-let wallet = await db.collection("wallet").doc(myId).get();
-let balance = wallet.exists ? wallet.data().balance : 0;
-if (balance < 10) {
-    alert("Insufficient balance! Please add money.");
-    return;
-}
-await db.collection("wallet").doc(myId).update({ balance: balance - 10 });
-await db.collection("chatRequests").doc(myId + "_" + toId).set({
-    from: myId,
-    to: toId,
-    status: "pending",
-    timestamp: Date.now(),
-    paidBy: "Male"
-});
-await db.collection("history").add({
-    uid: myId,
-    amount: -10,
-    type: "Chat Request",
-    time: new Date()
-});
-alert("Chat request sent! ₹10 deducted.");
-checkStatus(myId, toId);
+
+    alert("Chat request sent! ₹10 deducted.");
 }
 
-/* LOGOUT */
 function logout() {
-auth.signOut().then(() => { window.location = "login.html"; });
+    auth.signOut().then(() => window.location = "login.html");
 }
 </script>
 
 </body>
-    </html>
+</html>
