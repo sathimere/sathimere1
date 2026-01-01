@@ -3,60 +3,156 @@
 <head>
 <title>Sathi Mere - Home</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
+
 <style>
 body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
-.header { background: #ff1493; padding: 15px; color: white; text-align: center; font-size: 22px; font-weight: bold; position: fixed; top: 0; width: 100%; }
+
+.header {
+    background: #ff1493;
+    padding: 15px;
+    color: white;
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    position: fixed;
+    top: 0;
+    width: 100%;
+}
+
 .menu-btn { position: absolute; left: 15px; top: 14px; font-size: 25px; color: white; cursor: pointer; }
-.logout-btn { position: absolute; right: 15px; top: 10px; background: white; color: #ff1493; border: 2px solid #ff1493; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+
+/* NEW FILTER BUTTON */
+.filter-btn {
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    background: white;
+    color: #ff1493;
+    border: 2px solid #ff1493;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* SEARCH BAR */
+.search-box {
+    width: 90%;
+    margin: 70px auto 15px auto;
+    display: block;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 2px solid #ff1493;
+    font-size: 17px;
+    outline: none;
+}
+
 #menu { width: 0; height: 100%; background: white; position: fixed; top: 0; left: 0; overflow: hidden; transition: 0.3s; z-index: 20; padding-top: 60px; box-shadow: 4px 0 12px rgba(0,0,0,0.3); }
 #menu a { display: block; padding: 15px 25px; font-size: 18px; text-decoration: none; color: #444; }
 #menu a:hover { background: #ffe1f1; }
 .close-menu { position: absolute; top: 12px; right: 15px; font-size: 28px; cursor: pointer; }
-.container { padding: 80px 15px 80px; }
-.user-card { background: white; margin-bottom: 15px; padding: 15px; border-radius: 15px; box-shadow: 0 0 10px #ffc0d9; display: flex; align-items: center; }
-.user-card img { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 3px solid #ff1493; margin-right: 15px; }
+
+.container { padding: 20px 15px 80px; }
+
+.user-card {
+    background: white;
+    margin-bottom: 15px;
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 0 10px #ffc0d9;
+    display: flex;
+    align-items: center;
+}
+
+.user-card img {
+    width: 55px;
+    height: 55px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #ff1493;
+    margin-right: 15px;
+}
+
 .name { font-weight: bold; color: #ff1493; }
+
 .btn { background: #ff1493; color: white; border: none; border-radius: 8px; margin-top: 5px; padding: 7px 12px; cursor: pointer; }
 .btn-disabled { background: gray; }
-.bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; border-top: 1px solid #ddd; padding: 8px 0; }
-.nav-item { text-align: center; color: #ff1493; font-weight: bold; }
-.nav-item span { font-size: 26px; display: block; }
+
+/* NEW INSTAGRAM STYLE BOTTOM NAV */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background: #ff1493;
+    display: flex;
+    justify-content: space-around;
+    border-top: 2px solid gold;
+    border-left: 2px solid gold;
+    border-right: 2px solid gold;
+    padding: 8px 0;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+.nav-item { 
+    text-align: center; 
+    color: gold; 
+    font-weight: bold; 
+}
+
+.nav-item span { 
+    font-size: 26px; 
+    display: block; 
+    color: gold; 
+}
 </style>
 </head>
+
 <body>
+
 <!-- HEADER -->
 <div class="header">
 <span class="menu-btn" onclick="openMenu()">☰</span>
 Sathi Mere
-<button class="logout-btn" onclick="logout()">Logout</button>
+<button class="filter-btn" onclick="location.href='filter.html'">Filter</button>
 </div>
+
+<!-- SEARCH -->
+<input id="searchInput" class="search-box" placeholder="Search by name..." onkeyup="searchUser()">
+
 <!-- MENU -->
 <div id="menu">
 <span class="close-menu" onclick="closeMenu()">✖</span>
 <a href="profile.html">My Profile</a>
 <a href="wallet.html">Wallet</a>
+<a href="like.html">Likes</a>
+<a href="chat.html">Chats</a>
+<a href="referral.html">Referral</a> <!-- SHIFTED HERE -->
 <a href="help.html">Help & Support</a>
 <a href="privacy.html">Privacy Policy</a>
 <a onclick="logout()">Logout</a>
 </div>
-<!-- CONTENT -->
+
+<!-- USER LIST -->
 <div class="container" id="userList">Loading...</div>
-<!-- BOTTOM NAV -->
+
+<!-- INSTAGRAM STYLE NAV -->
 <div class="bottom-nav">
-<div class="nav-item" onclick="location.href='like.html'">
-<span>💜</span> Like
-</div>
-<div class="nav-item" onclick="location.href='chat.html'">
-<span>✉️</span> Chat
-</div>
-<div class="nav-item" onclick="location.href='profile.html'">
-<span>👤</span> Profile
-</div>
+    <div class="nav-item" onclick="location.href='like.html'">
+        <span id="navHeart">🤍</span> Like
+    </div>
+    <div class="nav-item" onclick="location.href='chat.html'">
+        <span>💬</span> Chat
+    </div>
+    <div class="nav-item" onclick="location.href='profile.html'">
+        <span>👤</span> Profile
+    </div>
 </div>
 
 <script>
@@ -70,6 +166,8 @@ if (!user) return (window.location = "login.html");
 loadUsers(user.uid);
 });
 
+let ALL_USERS = [];
+
 /* LOAD USERS */
 async function loadUsers(myId) {
 const list = document.getElementById("userList");
@@ -77,18 +175,32 @@ list.innerHTML = "Loading...";
 
 let me = await db.collection("users").doc(myId).get();
 let myGender = me.data().gender;
-
 let opposite = myGender === "Male" ? "Female" : "Male";
 
 db.collection("users")
 .where("gender", "==", opposite)
 .onSnapshot(snap => {
 
+    list.innerHTML = "";
+    ALL_USERS = [];
+
+    snap.forEach(doc => {
+        let u = doc.data();
+        u.uid = doc.id;
+        ALL_USERS.push(u);
+    });
+
+    renderUsers(ALL_USERS, myId);
+});
+}
+
+/* RENDER */
+function renderUsers(users, myId) {
+const list = document.getElementById("userList");
 list.innerHTML = "";
 
-snap.forEach(doc => {
-    let u = doc.data();
-    let uid = doc.id;
+users.forEach(u => {
+    let uid = u.uid;
 
     let card = document.createElement("div");
     card.className = "user-card";
@@ -98,7 +210,9 @@ snap.forEach(doc => {
         <div style="flex:1">
             <div class="name">${u.name} ${u.surname}</div>
             <div style="color:gray">${u.gender}</div>
-            <button class="btn" onclick="sendLike('${uid}')">💜 Like</button>
+
+            <button id="like_${uid}" class="btn" onclick="toggleLike('${uid}')">🤍 Like</button>
+
             <button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>
             <button id="btn_${uid}" class="btn">✉ Chat Request</button>
         </div>
@@ -109,19 +223,41 @@ snap.forEach(doc => {
     checkStatus(myId, uid);
 
     document.getElementById("btn_" + uid).onclick = () =>
-        sendRequest(myId, uid, myGender);
-});
+        sendRequest(myId, uid, u.gender);
 });
 }
 
-/* LIKE */
-async function sendLike(uid) {
+/* LIKE BUTTON → HEART TOGGLE */
+async function toggleLike(uid) {
+
+let btn = document.getElementById("like_" + uid);
+
+/* Already liked */
+if(btn.innerText.includes("❤️")){
+    alert("Already liked!");
+    return;
+}
+
+/* New like */
 await db.collection("likes").add({
-from: auth.currentUser.uid,
-to: uid,
-time: Date.now()
+    from: auth.currentUser.uid,
+    to: uid,
+    time: Date.now()
 });
-alert("Liked!");
+
+btn.innerHTML = "❤️ Liked";
+document.getElementById("navHeart").innerHTML = "❤️";
+
+}
+
+/* SEARCH */
+function searchUser() {
+const text = document.getElementById("searchInput").value.toLowerCase();
+let filtered = ALL_USERS.filter(u =>
+    u.name.toLowerCase().includes(text) ||
+    u.surname.toLowerCase().includes(text)
+);
+renderUsers(filtered, auth.currentUser.uid);
 }
 
 /* VIEW PROFILE */
@@ -129,7 +265,7 @@ function viewProfile(uid) {
 window.location = "view-profile.html?id=" + uid;
 }
 
-/* CHECK CHAT REQUEST STATUS */
+/* CHECK CHAT */
 async function checkStatus(myId, otherId) {
 let btn = document.getElementById("btn_" + otherId);
 
@@ -138,26 +274,25 @@ let doc = await db.collection("chatRequests")
 .get();
 
 if (doc.exists) {
-let status = doc.data().status;
+    let status = doc.data().status;
 
-if (status === "pending") {
-    btn.innerText = "Request Sent";
-    btn.disabled = true;
-    btn.classList.add("btn-disabled");
+    if (status === "pending") {
+        btn.innerText = "Request Sent";
+        btn.disabled = true;
+        btn.classList.add("btn-disabled");
+    }
+
+    if (status === "accepted") {
+        btn.innerText = "Chat Now";
+        btn.onclick = () => window.location = "chat-room.html?u=" + otherId;
+    }
+}
 }
 
-if (status === "accepted") {
-    btn.innerText = "Chat Now";
-    btn.onclick = () => window.location = "chat-room.html?u=" + otherId;
-}
-}
-}
-
-/* SEND CHAT REQUEST WITH FEMALE-FREE & MALE-DEDUCT LOGIC */
+/* CHAT REQUEST */
 async function sendRequest(myId, toId, myGender) {
 
 if(myGender === "Female") {
-    // Female request → no deduction
     await db.collection("chatRequests")
     .doc(myId + "_" + toId)
     .set({
@@ -167,40 +302,37 @@ if(myGender === "Female") {
         timestamp: Date.now(),
         paidBy: "Male"
     });
+
     alert("Chat request sent! (No deduction for Female)");
     checkStatus(myId, toId);
     return;
 }
 
-// Male logic → deduct ₹10
 let wallet = await db.collection("wallet").doc(myId).get();
 let balance = wallet.exists ? wallet.data().balance : 0;
 
 if (balance < 10) {
-alert("Insufficient balance! Please add money.");
-return;
+    alert("Insufficient balance! Please add money.");
+    return;
 }
 
-// Deduct 10
 await db.collection("wallet").doc(myId).update({ balance: balance - 10 });
 
-// Create request
 await db.collection("chatRequests")
 .doc(myId + "_" + toId)
 .set({
-from: myId,
-to: toId,
-status: "pending",
-timestamp: Date.now(),
-paidBy: "Male"
+    from: myId,
+    to: toId,
+    status: "pending",
+    timestamp: Date.now(),
+    paidBy: "Male"
 });
 
-// Add to history
 await db.collection("history").add({
-uid: myId,
-amount: -10,
-type: "Chat Request",
-time: new Date()
+    uid: myId,
+    amount: -10,
+    type: "Chat Request",
+    time: new Date()
 });
 
 alert("Chat request sent! ₹10 deducted.");
