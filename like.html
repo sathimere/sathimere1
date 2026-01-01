@@ -131,9 +131,9 @@ auth.onAuthStateChanged(user => {
 });
 
 /* LOAD ALL LIKES */
-async function loadLikes(myId) {
+function loadLikes(myId) {
 
-    /* OUTGOING — YOU LIKED */
+    /* OUTGOING LIST */
     db.collection("likes")
       .where("from", "==", myId)
       .orderBy("time", "desc")
@@ -147,15 +147,17 @@ async function loadLikes(myId) {
             return;
         }
 
-        snap.forEach(async doc => {
+        let html = "";
+
+        for (let doc of snap.docs) {
             let data = doc.data();
+            let userDoc = await db.collection("users").doc(data.to).get();
 
-            let user = await db.collection("users").doc(data.to).get();
-            if (!user.exists) return;
+            if (!userDoc.exists) continue;
 
-            let u = user.data();
+            let u = userDoc.data();
 
-            box.innerHTML += `
+            html += `
                 <div class="user-card">
                     <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
                     <div style="flex:1">
@@ -165,11 +167,13 @@ async function loadLikes(myId) {
                     </div>
                 </div>
             `;
-        });
+        }
+
+        box.innerHTML = html;
     });
 
 
-    /* INCOMING — THEY LIKED YOU */
+    /* INCOMING LIST */
     db.collection("likes")
       .where("to", "==", myId)
       .orderBy("time", "desc")
@@ -183,20 +187,22 @@ async function loadLikes(myId) {
             return;
         }
 
-        snap.forEach(async doc => {
+        let html = "";
+
+        for (let doc of snap.docs) {
             let data = doc.data();
             let likerId = data.from;
 
-            let user = await db.collection("users").doc(likerId).get();
-            if (!user.exists) return;
+            let userDoc = await db.collection("users").doc(likerId).get();
+            if (!userDoc.exists) continue;
 
-            let u = user.data();
+            let u = userDoc.data();
 
-            // CHECK IF YOU ALREADY LIKED BACK
+            // CHECK LIKE BACK
             let likeBackCheck = await db.collection("likes")
-                .where("from", "==", myId)
-                .where("to", "==", likerId)
-                .get();
+              .where("from", "==", myId)
+              .where("to", "==", likerId)
+              .get();
 
             let buttonHTML = "";
 
@@ -206,7 +212,7 @@ async function loadLikes(myId) {
                 buttonHTML = `<button class="btn" onclick="viewProfile('${likerId}')">👀 View Profile</button>`;
             }
 
-            box.innerHTML += `
+            html += `
                 <div class="user-card">
                     <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
                     <div style="flex:1">
@@ -216,9 +222,10 @@ async function loadLikes(myId) {
                     </div>
                 </div>
             `;
-        });
-    });
+        }
 
+        box.innerHTML = html;
+    });
 }
 
 /* LIKE BACK */
@@ -228,9 +235,6 @@ async function likeBack(uid) {
         to: uid,
         time: Date.now()
     });
-
-    // UI REFRESH
-    loadLikes(auth.currentUser.uid);
 }
 
 /* VIEW PROFILE */
