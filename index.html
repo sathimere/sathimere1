@@ -133,7 +133,7 @@ Sathi Mere
 <a href="wallet.html">Wallet</a>
 <a href="like.html">Likes</a>
 <a href="chat.html">Chats</a>
-<a href="referral.html">Referral</a> <!-- SHIFTED HERE -->
+<a href="referral.html">Referral</a>
 <a href="help.html">Help & Support</a>
 <a href="privacy.html">Privacy Policy</a>
 <a onclick="logout()">Logout</a>
@@ -227,27 +227,32 @@ users.forEach(u => {
 });
 }
 
-/* LIKE BUTTON → HEART TOGGLE */
+/* LIKE BUTTON */
 async function toggleLike(uid) {
 
+let myId = auth.currentUser.uid;
 let btn = document.getElementById("like_" + uid);
 
-/* Already liked */
-if(btn.innerText.includes("❤️")){
-    alert("Already liked!");
+/* CHECK IF ALREADY LIKED */
+let exists = await db.collection("likes")
+.where("from", "==", myId)
+.where("to", "==", uid)
+.get();
+
+if (!exists.empty) {
+    btn.innerHTML = "❤️ Liked";
     return;
 }
 
-/* New like */
+/* NEW LIKE */
 await db.collection("likes").add({
-    from: auth.currentUser.uid,
+    from: myId,
     to: uid,
     time: Date.now()
 });
 
 btn.innerHTML = "❤️ Liked";
 document.getElementById("navHeart").innerHTML = "❤️";
-
 }
 
 /* SEARCH */
