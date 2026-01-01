@@ -66,7 +66,16 @@ body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
 
 .name { font-weight: bold; color: #ff1493; }
 
-.btn { background: #ff1493; color: white; border: none; border-radius: 8px; padding: 7px 12px; cursor: pointer; margin-top:5px; }
+.btn {
+    background: #ff1493;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 12px;
+    cursor: pointer;
+    margin-top: 5px;
+}
+
 .btn-disabled { background: gray; }
 
 /* BOTTOM NAV */
@@ -108,13 +117,13 @@ Likes
 
 <!-- BOTTOM NAV -->
 <div class="bottom-nav">
-<div class="nav-item" onclick="location.href='like.html'"><span>💛</span> Like</div>
+<div class="nav-item" onclick="location.href='index.html'"><span>🏠</span> Home</div>
 <div class="nav-item" onclick="location.href='chat.html'"><span>📨</span> Chat</div>
 <div class="nav-item" onclick="location.href='profile.html'"><span>👤</span> Profile</div>
 </div>
 
 <script>
-auth.onAuthStateChanged(user => {
+auth.onAuthStateChanged(async (user) => {
     if (!user) return location.href = "login.html";
     loadLikes(user.uid);
 });
@@ -123,17 +132,15 @@ async function loadLikes(myId) {
     const outgoingBox = document.getElementById("outgoingList");
     const incomingBox = document.getElementById("incomingList");
 
-    // OUTGOING — YOU LIKED
+    // LOAD OUTGOING LIKES
     db.collection("likes").where("from","==",myId).orderBy("time","desc").onSnapshot(async snap => {
         outgoingBox.innerHTML = "";
-        if(snap.empty) { outgoingBox.innerHTML="<div style='color:gray'>No likes yet.</div>"; return; }
-
-        for(let doc of snap.docs) {
+        if (snap.empty) outgoingBox.innerHTML = "<div style='color:gray;'>No likes yet.</div>";
+        for(const doc of snap.docs){
             let data = doc.data();
-            let user = await db.collection("users").doc(data.to).get();
-            if(!user.exists) continue;
-            let u = user.data();
-
+            let userDoc = await db.collection("users").doc(data.to).get();
+            if(!userDoc.exists) continue;
+            let u = userDoc.data();
             outgoingBox.innerHTML += `
                 <div class="user-card">
                     <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
@@ -141,36 +148,31 @@ async function loadLikes(myId) {
                         <div class="name">${u.name} ${u.surname}</div>
                         <div style="color:gray">${u.gender}</div>
                         <button class="btn btn-disabled">❤️ Liked</button>
+                        <button class="btn" onclick="viewProfile('${data.to}')">👀 View Profile</button>
+                        <button class="btn" id="chat_${data.to}">✉ Chat Request</button>
                     </div>
                 </div>
             `;
+            checkChatStatus(myId,data.to);
         }
     });
 
-    // INCOMING — THEY LIKED YOU
+    // LOAD INCOMING LIKES
     db.collection("likes").where("to","==",myId).orderBy("time","desc").onSnapshot(async snap => {
         incomingBox.innerHTML = "";
-        if(snap.empty) { incomingBox.innerHTML="<div style='color:gray'>No one liked you yet.</div>"; return; }
-
-        for(let doc of snap.docs) {
+        if (snap.empty) incomingBox.innerHTML = "<div style='color:gray;'>No one liked you yet.</div>";
+        for(const doc of snap.docs){
             let data = doc.data();
             let likerId = data.from;
-            let user = await db.collection("users").doc(likerId).get();
-            if(!user.exists) continue;
-            let u = user.data();
+            let userDoc = await db.collection("users").doc(likerId).get();
+            if(!userDoc.exists) continue;
+            let u = userDoc.data();
 
-            // Check if you already liked back
-            let likeBackSnap = await db.collection("likes")
-                .where("from","==",myId)
-                .where("to","==",likerId)
-                .get();
-
-            let btnHTML = "";
-            if(likeBackSnap.empty){
-                btnHTML = `<button class="btn" onclick="likeBack('${likerId}')">💜 Like Back</button>`;
-            } else {
-                btnHTML = `<button class="btn" onclick="viewProfile('${likerId}')">👀 View Profile</button>`;
-            }
+            // CHECK IF ALREADY LIKED BACK
+            let likeBackCheck = await db.collection("likes").where("from","==",myId).where("to","==",likerId).get();
+            let buttonHTML = likeBackCheck.empty
+                ? `<button class="btn" onclick="likeBack('${likerId}')">💜 Like Back</button>`
+                : `<button class="btn" onclick="viewProfile('${likerId}')">👀 View Profile</button>`;
 
             incomingBox.innerHTML += `
                 <div class="user-card">
@@ -178,27 +180,48 @@ async function loadLikes(myId) {
                     <div style="flex:1">
                         <div class="name">${u.name} ${u.surname}</div>
                         <div style="color:gray">${u.gender}</div>
-                        ${btnHTML}
+                        ${buttonHTML}
+                        <button class="btn" id="chat_${likerId}">✉ Chat Request</button>
                     </div>
                 </div>
             `;
+            checkChatStatus(myId,likerId);
         }
     });
 }
 
-// LIKE BACK
+// LIKE BACK FUNCTION
 async function likeBack(uid){
     await db.collection("likes").add({
         from: auth.currentUser.uid,
         to: uid,
         time: Date.now()
     });
-    loadLikes(auth.currentUser.uid); // refresh UI
+    loadLikes(auth.currentUser.uid);
 }
 
 // VIEW PROFILE
 function viewProfile(uid){
-    window.location = "view-profile.html?id=" + uid;
+    window.location = "view-profile.html?id="+uid;
+}
+
+// CHAT STATUS
+async function checkChatStatus(myId,otherId){
+    let btn = document.getElementById("chat_"+otherId);
+    if(!btn) return;
+    let doc = await db.collection("chatRequests").doc(myId+"_"+otherId).get();
+    if(doc.exists){
+        let status = doc.data().status;
+        if(status==="pending"){
+            btn.innerText = "Request Sent";
+            btn.disabled = true;
+            btn.classList.add("btn-disabled");
+        }
+        if(status==="accepted"){
+            btn.innerText = "Chat Now";
+            btn.onclick = ()=>window.location="chat-room.html?u="+otherId;
+        }
+    }
 }
 </script>
 
