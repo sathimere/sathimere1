@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Likes - Sathi Mere</title>
+<title>Sathi Mere - Likes</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <!-- Firebase -->
@@ -11,165 +11,157 @@
 <script src="firebase.js"></script>
 
 <style>
-body { font-family: Arial; background:#ffe4f0; margin:0; padding:0; }
-.header { background:#ff1493; padding:15px; color:white; text-align:center; font-size:22px; font-weight:bold; position:fixed; top:0; width:100%; }
-.back-btn { position:absolute; left:15px; top:14px; font-size:25px; color:white; cursor:pointer; }
+body { 
+    font-family: Arial; 
+    background: #ffe4f0; 
+    margin: 0;
+}
 
-.section-title { font-size:19px; font-weight:bold; color:#ff1493; margin:90px 15px 10px; }
-.container { padding:10px 15px 80px; }
+.header {
+    background: #ff1493;
+    padding: 15px;
+    color: white;
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+}
 
-.user-card { background:white; margin-bottom:15px; padding:12px; border-radius:15px; box-shadow:0 0 10px #ffc0d9; display:flex; align-items:center; }
-.user-card img { width:55px; height:55px; border-radius:50%; object-fit:cover; border:3px solid #ff1493; margin-right:15px; }
-.name { font-weight:bold; color:#ff1493; }
-.btn { background:#ff1493; color:white; border:none; border-radius:8px; padding:7px 12px; cursor:pointer; margin-top:5px; }
-.btn-disabled { background:gray; }
+.container { padding: 20px; }
 
-/* BOTTOM NAV */
-.bottom-nav { position:fixed; bottom:0; width:100%; background:#ff1493; display:flex; justify-content:space-around; border-top:2px solid gold; padding:8px 0; border-top-left-radius:10px; border-top-right-radius:10px; }
-.nav-item { text-align:center; color:gold; font-weight:bold; }
-.nav-item span { font-size:26px; display:block; color:gold; }
+.user-card {
+    background: white;
+    margin-bottom: 15px;
+    padding: 15px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 0 10px #ffc0d9;
+}
+
+.user-card img {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #ff1493;
+    margin-right: 15px;
+}
+
+.name { 
+    font-weight: bold; 
+    color: #ff1493; 
+    font-size: 18px;
+}
+
+.btn {
+    background: #ff1493;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    margin-top: 7px;
+    padding: 7px 12px;
+    cursor: pointer;
+}
 </style>
 </head>
 
 <body>
 
-<div class="header">
-<span class="back-btn" onclick="location.href='index.html'">←</span>
-Likes
-</div>
+<div class="header">My Likes</div>
 
-<div class="section-title">You Liked</div>
-<div class="container" id="outgoingList">Loading...</div>
-
-<div class="section-title">Liked You</div>
-<div class="container" id="incomingList">Loading...</div>
-
-<div class="bottom-nav">
-    <div class="nav-item" onclick="location.href='like.html'">
-        <span>🤍</span> Like
-    </div>
-    <div class="nav-item" onclick="location.href='chat.html'">
-        <span>💬</span> Chat
-    </div>
-    <div class="nav-item" onclick="location.href='profile.html'">
-        <span>👤</span> Profile
-    </div>
-</div>
+<div class="container" id="likeList">Loading...</div>
 
 <script>
-
-/* LOGIN CHECK */
 auth.onAuthStateChanged(user => {
-    if (!user) return location.href = "login.html";
+    if (!user) return (window.location = "login.html");
     loadLikes(user.uid);
 });
 
-/* LOAD ALL LIKES */
+/* LOAD LIKED USERS */
 async function loadLikes(myId) {
+    let list = document.getElementById("likeList");
+    list.innerHTML = "Loading...";
 
-    /* OUTGOING — YOU LIKED */
     db.collection("likes")
     .where("from", "==", myId)
-    .orderBy("time", "desc")
     .onSnapshot(async snap => {
 
-        const box = document.getElementById("outgoingList");
-        box.innerHTML = "";
+        list.innerHTML = "";
 
         if (snap.empty) {
-            box.innerHTML = "<div style='color:gray;'>You haven't liked anyone yet.</div>";
+            list.innerHTML = "<p>No likes found!</p>";
             return;
         }
 
         snap.forEach(async doc => {
             let data = doc.data();
+            let toId = data.to;
 
-            let user = await db.collection("users").doc(data.to).get();
-            if (!user.exists) return;
+            let userDoc = await db.collection("users").doc(toId).get();
+            let u = userDoc.data();
 
-            let u = user.data();
+            let card = document.createElement("div");
+            card.className = "user-card";
 
-            box.innerHTML += `
-                <div class="user-card">
-                    <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
-                    <div style="flex:1">
-                        <div class="name">${u.name} ${u.surname}</div>
-                        <div style="color:gray">${u.gender}</div>
-                        <button class="btn btn-disabled">❤️ Liked</button>
-                    </div>
+            card.innerHTML = `
+                <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
+                
+                <div style="flex:1">
+                    <div class="name">${u.name} ${u.surname}</div>
+                    <div style="color:gray">${u.gender}</div>
+
+                    <button class="btn" onclick="viewProfile('${toId}')">👀 View Profile</button>
+                    <button id="back_${toId}" class="btn">💘 Like Back</button>
                 </div>
             `;
-        });
-    });
 
-    /* INCOMING — THEY LIKED YOU */
-    db.collection("likes")
-    .where("to", "==", myId)
-    .orderBy("time", "desc")
-    .onSnapshot(async snap => {
+            list.appendChild(card);
 
-        const box = document.getElementById("incomingList");
-        box.innerHTML = "";
-
-        if (snap.empty) {
-            box.innerHTML = "<div style='color:gray;'>No one liked you yet.</div>";
-            return;
-        }
-
-        snap.forEach(async doc => {
-            let data = doc.data();
-            let likerId = data.from;
-
-            let user = await db.collection("users").doc(likerId).get();
-            if (!user.exists) return;
-
-            let u = user.data();
-
-            /* CHECK MUTUAL LIKE */
-            let myLike = await db.collection("likes")
-            .where("from", "==", myId)
-            .where("to", "==", likerId)
-            .get();
-
-            let btn = "";
-
-            if (myLike.empty) {
-                btn = `<button class="btn" onclick="likeBack('${likerId}')">💜 Like Back</button>`;
-            } else {
-                btn = `<button class="btn" onclick="viewProfile('${likerId}')">👀 View Profile</button>`;
-            }
-
-            box.innerHTML += `
-                <div class="user-card">
-                    <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
-                    <div style="flex:1">
-                        <div class="name">${u.name} ${u.surname}</div>
-                        <div style="color:gray">${u.gender}</div>
-                        ${btn}
-                    </div>
-                </div>
-            `;
+            checkLikeBack(myId, toId);
         });
     });
 }
 
-/* LIKE BACK */
-async function likeBack(uid) {
-    await db.collection("likes").add({
-        from: auth.currentUser.uid,
-        to: uid,
-        time: Date.now()
-    });
+/* CHECK IF THEY LIKED YOU */
+async function checkLikeBack(myId, otherId) {
+    let btn = document.getElementById("back_" + otherId);
 
-    loadLikes(auth.currentUser.uid);
+    let snap = await db.collection("likes")
+    .where("from", "==", otherId)
+    .where("to", "==", myId)
+    .get();
+
+    if (snap.empty) {
+        btn.style.display = "none"; // They didn't like you yet
+    } else {
+        btn.onclick = () => likeBack(myId, otherId);
+    }
+}
+
+/* LIKE BACK */
+async function likeBack(myId, otherId) {
+
+    let exists = await db.collection("likes")
+    .where("from", "==", myId)
+    .where("to", "==", otherId)
+    .get();
+
+    if (exists.empty) {
+        await db.collection("likes").add({
+            from: myId,
+            to: otherId,
+            time: Date.now()
+        });
+    }
+
+    alert("You liked back!");
 }
 
 /* VIEW PROFILE */
 function viewProfile(uid) {
     window.location = "view-profile.html?id=" + uid;
 }
-
 </script>
 
 </body>
-</html>
+    </html>
