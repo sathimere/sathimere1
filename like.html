@@ -135,13 +135,14 @@ async function loadLikes(myId){
             let userDoc = await db.collection("users").doc(toId).get();
             if(!userDoc.exists) return;
             let u = userDoc.data();
+
             outgoingBox.innerHTML += `
             <div class="user-card">
                 <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
                 <div style="flex:1">
                     <div class="name">${u.name} ${u.surname}</div>
                     <div style="color:gray">${u.gender}</div>
-                    <button class="btn btn-disabled">Liked ✓</button>
+                    <button class="btn btn-disabled">❤️ Liked</button>
                     <button class="btn" onclick="viewProfile('${toId}')">👀 View Profile</button>
                     <button class="btn" onclick="sendRequest('${myId}','${toId}')">✉ Chat Request</button>
                 </div>
@@ -217,7 +218,6 @@ async function sendRequest(myId,toId){
     });
     alert("Chat request sent! ₹10 deducted.");
 }
-
 </script>
 </body>
-    </html>
+</html>
