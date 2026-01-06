@@ -17,7 +17,6 @@ body{
   padding:15px;
 }
 
-/* Top bar */
 .topbar{
   background:#ff1493;
   padding:12px;
@@ -28,7 +27,6 @@ body{
   margin-bottom:15px;
 }
 
-/* Search Box */
 .search-box{
   width:100%;
   padding:12px;
@@ -37,7 +35,6 @@ body{
   margin-bottom:10px;
 }
 
-/* User list */
 .user-list{
   max-height:70vh;
   overflow-y:auto;
@@ -47,7 +44,6 @@ body{
   box-shadow:0 0 10px #ff9ac7;
 }
 
-/* Each user row */
 .user-box{
   padding:12px;
   border-bottom:1px solid #eee;
@@ -56,7 +52,6 @@ body{
   align-items:center;
 }
 
-/* Buttons */
 .btn{
   background:#ff1493;
   color:white;
@@ -67,7 +62,6 @@ body{
   margin-left:5px;
 }
 
-/* Help button */
 .help-btn{
   margin-top:15px;
   width:100%;
@@ -80,7 +74,6 @@ body{
   cursor:pointer;
 }
 
-/* Popup Modal */
 .modal{
   position:fixed;
   top:0; left:0;
@@ -112,7 +105,6 @@ body{
 
 <button class="help-btn" onclick="goHelp()">Help & Support</button>
 
-<!-- Profile Popup Modal -->
 <div id="modal" class="modal">
   <div class="modal-content" id="modalContent"></div>
 </div>
@@ -126,9 +118,10 @@ auth.onAuthStateChanged((user)=>{
      return;
    }
 
+   // ADMIN email check – FIXED
    if(user.email !== "sathimere.admin@gmail.com"){
      alert("Access Denied!");
-     window.location="index.html";
+     auth.signOut();     // FIXED: pehle redirect hota tha
      return;
    }
 
@@ -139,24 +132,27 @@ auth.onAuthStateChanged((user)=>{
 /* ---------------- LOAD USERS (SORT BY WALLET DESC) ---------------- */
 function loadUsers(){
   db.collection("users")
-  .orderBy("wallet", "desc")   // 👈 sabse zyada wallet upar
+  .orderBy("wallet", "desc")
   .onSnapshot(res=>{
 
     let html = "";
     res.forEach(doc=>{
       let u = doc.data();
 
+      // FIXED: wallet undefined bug
+      let wallet = u.wallet ? u.wallet : 0;
+
       html += `
         <div class="user-box">
           <div>
-            <b>${u.name} ${u.surname}</b><br>
-            <small>${u.email}</small><br>
-            <small>Wallet: ₹${u.wallet}</small>
+            <b>${u.name || ""} ${u.surname || ""}</b><br>
+            <small>${u.email || ""}</small><br>
+            <small>Wallet: ₹${wallet}</small>
           </div>
 
           <div>
             <button class="btn" onclick="viewProfile('${doc.id}')">View</button>
-            <button class="btn" onclick="editWallet('${doc.id}', ${u.wallet})">Wallet</button>
+            <button class="btn" onclick="editWallet('${doc.id}', ${wallet})">Wallet</button>
             <button class="btn" onclick="deleteUser('${doc.id}')">Delete</button>
           </div>
         </div>
@@ -168,19 +164,22 @@ function loadUsers(){
 }
 
 
-/* ---------------- VIEW FULL PROFILE ---------------- */
+/* ---------------- VIEW PROFILE (FIXED FIELDS) ---------------- */
 async function viewProfile(uid){
     let d = await db.collection("users").doc(uid).get();
     if(!d.exists) return;
+
     let u = d.data();
 
     document.getElementById("modalContent").innerHTML = `
-      <h3>${u.name} ${u.surname}</h3>
-      <b>Email:</b> ${u.email}<br>
-      <b>Gender:</b> ${u.gender}<br>
-      <b>Age:</b> ${u.age}<br>
-      <b>Location:</b> ${u.city}, ${u.state}<br><br>
-      <b>Wallet:</b> ₹${u.wallet}<br><br>
+      <h3>${u.name || ""} ${u.surname || ""}</h3>
+
+      <b>Email:</b> ${u.email || "Not available"}<br>
+      <b>Gender:</b> ${u.gender || "Not set"}<br>
+      <b>Age:</b> ${u.age || "Not set"}<br>
+      <b>Location:</b> ${u.city || ""}, ${u.state || ""}<br><br>
+
+      <b>Wallet:</b> ₹${u.wallet || 0}<br><br>
 
       <button class="btn" onclick="closeModal()">Close</button>
     `;
@@ -226,12 +225,12 @@ function filterUsers(){
 }
 
 
-/* ---------------- HELP REDIRECT ---------------- */
+/* ---------------- HELP PAGE FIXED ---------------- */
 function goHelp(){
-  window.location = "help-admin.html";
+  window.location = "help-admin.html";  // no logout now
 }
 
 </script>
 
 </body>
-</html>
+  </html>
