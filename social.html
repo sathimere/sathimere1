@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Social Links – SathiMere</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  margin:0;
+  background:#f7f7f7;
+  font-family:Arial;
+}
+
+.header{
+  background:#ff4da6;
+  color:white;
+  text-align:center;
+  padding:15px;
+  font-size:22px;
+  font-weight:bold;
+}
+
+.box{
+  width:90%;
+  margin:20px auto;
+  background:white;
+  padding:15px;
+  border-radius:12px;
+  box-shadow:0 0 6px rgba(0,0,0,0.1);
+}
+
+.btn{
+  width:100%;
+  padding:14px;
+  background:#ff4da6;
+  color:white;
+  text-align:center;
+  font-size:18px;
+  border-radius:10px;
+  margin-top:10px;
+}
+</style>
+</head>
+<body>
+
+<div class="header">Social Media</div>
+
+<div class="box">
+  <div class="btn" onclick="openInstagram()">Open Instagram</div>
+  <div class="btn" onclick="openFacebook()">Open Facebook</div>
+</div>
+
+<script>
+function openInstagram(){
+  // App deep link
+  const appLink = "instagram://user?username=sath.partner.ap";
+
+  // Browser fallback
+  const webLink = "https://www.instagram.com/sath.partner.ap?igsh=MTVzMDZjYnVkdGdyZw==";
+
+  openApp(appLink, webLink);
+}
+
+function openFacebook(){
+  // App deep link
+  const appLink = "fb://page/?id=1Co6vDHpcn";
+
+  // Browser fallback
+  const webLink = "https://www.facebook.com/share/1Co6vDHpcn/";
+
+  openApp(appLink, webLink);
+}
+
+function openApp(app, web){
+  let clickedAt = +new Date;
+
+  // Try open App
+  window.location = app;
+
+  // After 800ms → fallback to browser if app not found
+  setTimeout(function(){
+    if ((+new Date - clickedAt) < 900){
+      window.location = web;
+    }
+  }, 800);
+}
+</script>
+
+</body>
+</html>
