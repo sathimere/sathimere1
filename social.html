@@ -4,87 +4,117 @@
 <title>Social Links – SathiMere</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 <style>
 body{
   margin:0;
-  background:#f7f7f7;
-  font-family:Arial;
+  background:#fdfdfd;
+  font-family: 'Poppins', sans-serif;
 }
 
 .header{
-  background:#ff4da6;
+  background: linear-gradient(45deg,#ff4da6,#ff0066);
   color:white;
   text-align:center;
-  padding:15px;
-  font-size:22px;
-  font-weight:bold;
+  padding:18px;
+  font-size:24px;
+  font-weight:700;
 }
 
-.box{
+.container{
   width:90%;
-  margin:20px auto;
-  background:white;
-  padding:15px;
-  border-radius:12px;
-  box-shadow:0 0 6px rgba(0,0,0,0.1);
+  margin:25px auto;
 }
 
-.btn{
-  width:100%;
-  padding:14px;
-  background:#ff4da6;
-  color:white;
-  text-align:center;
-  font-size:18px;
-  border-radius:10px;
-  margin-top:10px;
+.card{
+  background:white;
+  padding:20px;
+  margin-top:15px;
+  border-radius:18px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);
+  display:flex;
+  align-items:center;
+  cursor:pointer;
+  transition:0.3s;
+}
+
+.card:hover{
+  transform:scale(1.02);
+  box-shadow:0 6px 20px rgba(0,0,0,0.1);
+}
+
+.icon{
+  font-size:40px;
+  margin-right:20px;
+}
+
+.ig{ color:#d62976; }
+.fb{ color:#1877f2; }
+
+.title{
+  font-size:20px;
+  font-weight:600;
+}
+
+.subtitle{
+  font-size:14px;
+  color:#777;
 }
 </style>
 </head>
+
 <body>
 
-<div class="header">Social Media</div>
+<div class="header">Follow Us</div>
 
-<div class="box">
-  <div class="btn" onclick="openInstagram()">Open Instagram</div>
-  <div class="btn" onclick="openFacebook()">Open Facebook</div>
+<div class="container">
+
+  <!-- Instagram -->
+  <div class="card" onclick="openInstagram()">
+    <i class="fa-brands fa-instagram icon ig"></i>
+    <div>
+      <div class="title">Instagram</div>
+      <div class="subtitle">@sath.partner.ap</div>
+    </div>
+  </div>
+
+  <!-- Facebook -->
+  <div class="card" onclick="openFacebook()">
+    <i class="fa-brands fa-facebook icon fb"></i>
+    <div>
+      <div class="title">Facebook</div>
+      <div class="subtitle">Click to open page</div>
+    </div>
+  </div>
+
 </div>
 
 <script>
 function openInstagram(){
-  // App deep link
   const appLink = "instagram://user?username=sath.partner.ap";
-
-  // Browser fallback
   const webLink = "https://www.instagram.com/sath.partner.ap?igsh=MTVzMDZjYnVkdGdyZw==";
-
   openApp(appLink, webLink);
 }
 
 function openFacebook(){
-  // App deep link
   const appLink = "fb://page/?id=1Co6vDHpcn";
-
-  // Browser fallback
   const webLink = "https://www.facebook.com/share/1Co6vDHpcn/";
-
   openApp(appLink, webLink);
 }
 
 function openApp(app, web){
-  let clickedAt = +new Date;
-
-  // Try open App
+  let now = Date.now();
   window.location = app;
 
-  // After 800ms → fallback to browser if app not found
-  setTimeout(function(){
-    if ((+new Date - clickedAt) < 900){
+  setTimeout(()=>{
+    if(Date.now() - now < 900){
       window.location = web;
     }
-  }, 800);
+  },700);
 }
 </script>
 
 </body>
-</html>
+  </html>
