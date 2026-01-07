@@ -8,7 +8,6 @@
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
 <style>
     body {
@@ -70,9 +69,10 @@
 </div>
 
 <script>
-    // ---------------- FIREBASE CONFIG ----------------
+
+    // ---------------- FIREBASE CONFIG (FINAL WORKING) ----------------
     const firebaseConfig = {
-        apiKey: "AIzaSyC8Cxxxxx-xxxx", 
+        apiKey: "AIzaSyC8Cxxxxx-xxxx",
         authDomain: "ac-colour-prediction.firebaseapp.com",
         projectId: "ac-colour-prediction",
         storageBucket: "ac-colour-prediction.appspot.com",
@@ -81,17 +81,14 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    const auth = firebase.auth();
-    // -------------------------------------------------
+    //-----------------------------------------------------------------
 
-    // Temporary/demo user login (replace with your login system)
-    auth.signInAnonymously();
-
-    let currentUser = null;
-    auth.onAuthStateChanged(user => {
-        currentUser = user.uid;
-        checkReply();
-    });
+    // CREATE UNIQUE USER ID (No Auth Needed)
+    let currentUser = localStorage.getItem("uid");
+    if (!currentUser) {
+        currentUser = "USER-" + Date.now();
+        localStorage.setItem("uid", currentUser);
+    }
 
     // ---------------- SEND HELP REQUEST ----------------
     function sendHelp() {
@@ -110,21 +107,22 @@
             timestamp: Date.now()
         })
         .then(() => {
-            alert("Request sent to Admin!");
+            alert("Request sent successfully!");
         })
         .catch(err => alert("Error: " + err));
     }
 
     // ---------------- CHECK ADMIN REPLY LIVE ----------------
-    function checkReply() {
-        db.collection("helpRequests").doc(currentUser)
-            .onSnapshot(doc => {
-                if (doc.exists && doc.data().reply !== "") {
-                    document.getElementById("replyText").innerText = doc.data().reply;
+    db.collection("helpRequests").doc(currentUser)
+        .onSnapshot(doc => {
+            if (doc.exists) {
+                let data = doc.data();
+                if (data.reply && data.reply !== "") {
+                    document.getElementById("replyText").innerText = data.reply;
                     document.getElementById("replyBox").style.display = "block";
                 }
-            });
-    }
+            }
+        });
 
 </script>
 
