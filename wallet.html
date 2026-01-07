@@ -72,7 +72,7 @@
 
 
   /* ---------------------------------------------
-      FIREBASE CONFIG (Correct + Complete)
+      FIREBASE CONFIG 
   ----------------------------------------------*/
   const firebaseConfig = {
     apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
@@ -89,7 +89,7 @@
 
 
   /* ------------------------------------
-      FETCH CURRENT BALANCE
+      FETCH CURRENT BALANCE (From wallet/user_001)
   ------------------------------------*/
 
   async function loadBalance() {
@@ -162,10 +162,9 @@
 
           if (verify.status === "success") {
 
-            /* ------------------------------------------------------------------
-                FIXED — wallet/user_001/balance structure को follow करता है
-            ------------------------------------------------------------------*/
-
+            /* -----------------------------------------
+                ALWAYS save to → wallet/user_001
+            -----------------------------------------*/
             const ref = db.collection("wallet").doc(uid);
             let w = await ref.get();
 
@@ -204,4 +203,4 @@
 </script>
 
 </body>
-</html>
+  </html>
