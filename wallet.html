@@ -30,13 +30,30 @@
     button:hover{
       background:#45a049;
     }
+    #balanceBox {
+      font-size:20px;
+      font-weight:bold;
+      padding:10px;
+      background:#f3f3f3;
+      border-radius:8px;
+      margin-bottom:15px;
+      text-align:center;
+    }
   </style>
 
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
 </head>
 <body>
 
 <div class="box">
+  
+  <!-- 🔥 WALLET BALANCE DISPLAY -->
+  <div id="balanceBox">Wallet: ₹0</div>
+
   <h2>Add Money to Wallet</h2>
 
   <input type="number" id="amount" placeholder="Enter Amount (₹)" />
@@ -48,10 +65,37 @@
 
 <script>
 
+  // 🔥 FIREBASE CONNECTION
+  const firebaseConfig = {
+    apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
+    authDomain: "sathimere-415fa.firebaseapp.com",
+    projectId: "sathimere-415fa",
+  };
+
+  const appFB = firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // UID (real user ka UID yaha aayega)
+  const uid = "user_001";
+
+  // 🔥 REALTIME WALLET BALANCE
+  function loadBalance() {
+    db.collection("wallet").doc(uid).onSnapshot(doc => {
+      if (doc.exists) {
+        const bal = doc.data().balance || 0;
+        document.getElementById("balanceBox").innerText = "Wallet: ₹" + bal;
+      } else {
+        document.getElementById("balanceBox").innerText = "Wallet: ₹0";
+      }
+    });
+  }
+
+  loadBalance();
+
+
+  // YOUR ORIGINAL CODE (unchanged)
   const BACKEND = "https://sathimere-backend.onrender.com";
   const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
-
-  const uid = "user_001";  // Replace with real logged-in user's UID
 
   async function addMoney() {
     let amount = document.getElementById("amount").value;
@@ -64,8 +108,6 @@
     document.getElementById("msg").innerText = "Creating order...";
 
     try {
-
-      // 1️⃣ Send request to backend to create order
       let orderRes = await fetch(`${BACKEND}/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,7 +121,6 @@
         return;
       }
 
-      // 2️⃣ Razorpay payment popup
       var options = {
         "key": RAZORPAY_KEY,
         "amount": order.amount,
@@ -89,10 +130,8 @@
         "order_id": order.id,
 
         "handler": async function (response) {
-
           document.getElementById("msg").innerText = "Verifying payment...";
 
-          // 3️⃣ Verify on backend
           let verifyRes = await fetch(`${BACKEND}/verify-payment`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -110,6 +149,7 @@
             alert("Payment Successful! Wallet Updated.");
             document.getElementById("amount").value = "";
             document.getElementById("msg").innerText = "";
+            loadBalance(); // 🔥 UPDATE BALANCE AFTER PAYMENT
           } else {
             document.getElementById("msg").innerText = "Payment verification failed.";
           }
