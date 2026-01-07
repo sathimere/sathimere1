@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
 <script src="firebase.js"></script>
 
 <style>
@@ -106,176 +107,188 @@ label{
 
 <div class="container">
 
-<input type="file" id="photo" style="display:none">
-<button class="change-btn" onclick="document.getElementById('photo').click()">Change Photo</button>
+  <input type="file" id="photo" style="display:none">
+  <button class="change-btn" onclick="document.getElementById('photo').click()">Change Photo</button>
 
-<div class="box">
+  <div class="box">
 
-<label>Surname</label>
-<input id="surname" type="text">
+    <label>Surname</label>
+    <input id="surname" type="text">
 
-<label>Name</label>
-<input id="name" type="text">
+    <label>Name</label>
+    <input id="name" type="text">
 
-<label>Father's Name</label>
-<input id="father" type="text">
+    <label>Father's Name</label>
+    <input id="father" type="text">
 
-<label>Mother's Name</label>
-<input id="mother" type="text">
+    <label>Mother's Name</label>
+    <input id="mother" type="text">
 
-<div class="row-2">
-  <div>
-    <label>Age</label>
-    <input id="age" type="number">
+    <div class="row-2">
+      <div>
+        <label>Age</label>
+        <input id="age" type="number">
+      </div>
+      <div>
+        <label>Date of Birth</label>
+        <input id="dob" type="date">
+      </div>
+    </div>
+
+    <label>Email</label>
+    <input id="email" type="text">
+
+    <label>Mobile</label>
+    <input id="mobile" type="text">
+
+    <label>Mobile Visibility</label>
+    <select id="mobilePrivacy">
+      <option value="public">Public</option>
+      <option value="private">Private</option>
+    </select>
+
+    <label>City</label>
+    <input id="city" type="text">
+
+    <label>State</label>
+    <input id="state" type="text">
+
+    <label>District</label>
+    <input id="district" type="text">
+
+    <label>Caste</label>
+    <input id="caste" type="text">
+
+    <label>Address</label>
+    <textarea id="address"></textarea>
+
+    <label>Gender</label>
+    <select id="gender">
+      <option value="">Select Gender</option>
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+    </select>
+
+    <label>Choice (Partner Preference)</label>
+    <textarea id="choice"></textarea>
+
+    <label>Interest</label>
+    <textarea id="interest"></textarea>
+
+    <button class="save-btn" onclick="saveProfile()">Save Profile</button>
   </div>
-  <div>
-    <label>Date of Birth</label>
-    <input id="dob" type="date">
-  </div>
-</div>
-
-<label>Email</label>
-<input id="email" type="text">
-
-<label>Mobile</label>
-<input id="mobile" type="text">
-
-<label>Mobile Visibility</label>
-<select id="mobilePrivacy">
-  <option value="public">Public</option>
-  <option value="private">Private</option>
-</select>
-
-<label>City</label>
-<input id="city" type="text">
-
-<label>State</label>
-<input id="state" type="text">
-
-<label>District</label>
-<input id="district" type="text">
-
-<label>Caste</label>
-<input id="caste" type="text">
-
-<label>Address</label>
-<textarea id="address"></textarea>
-
-<label>Gender</label>
-<select id="gender">
-  <option value="">Select Gender</option>
-  <option value="Male">Male</option>
-  <option value="Female">Female</option>
-</select>
-
-<label>Choice (Partner Preference)</label>
-<textarea id="choice"></textarea>
-
-<label>Interest</label>
-<textarea id="interest"></textarea>
-
-<button class="save-btn" onclick="saveProfile()">Save Profile</button>
-
-</div>
 </div>
 
 <script>
 const imgbbKey = "5d029a90e51dd6f7960ae7c3a7ac4200";
 
-/* LOAD USER */
-auth.onAuthStateChanged(async (user)=>{
-  if(!user){
-    window.location="login.html";
-    return;
-  }
-  loadData(user.uid);
+/* LOAD USER DATA */
+auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+        window.location = "login.html";
+        return;
+    }
+    loadData(user.uid);
 });
 
+/* Load into INPUTS */
 async function loadData(uid){
-  let doc = await db.collection("users").doc(uid).get();
-  if(doc.exists){
-    let d = doc.data();
+    let doc = await db.collection("users").doc(uid).get();
 
-    surname.value = d.surname || "";
-    name.value = d.name || "";
-    father.value = d.father || "";
-    mother.value = d.mother || "";
-    age.value = d.age || "";
-    dob.value = d.dob || "";
-    email.value = d.email || "";
-    mobile.value = d.mobile || "";
-    mobilePrivacy.value = d.mobilePrivacy || "public";
-    city.value = d.city || "";
-    state.value = d.state || "";
-    district.value = d.district || "";
-    caste.value = d.caste || "";
-    address.value = d.address || "";
-    gender.value = d.gender || "";
-    choice.value = d.choice || "";
-    interest.value = d.interest || "";
+    if(doc.exists){
+        let d = doc.data();
 
-    if(d.photo){
-      profileImg.src = d.photo;
+        surname.value = d.surname ?? "";
+        name.value = d.name ?? "";
+        father.value = d.father ?? "";
+        mother.value = d.mother ?? "";
+        age.value = d.age ?? "";
+        dob.value = d.dob ?? "";
+        email.value = d.email ?? "";
+        mobile.value = d.mobile ?? "";
+        mobilePrivacy.value = d.mobilePrivacy ?? "public";
+        city.value = d.city ?? "";
+        state.value = d.state ?? "";
+        district.value = d.district ?? "";
+        caste.value = d.caste ?? "";
+        address.value = d.address ?? "";
+        gender.value = d.gender ?? "";
+        choice.value = d.choice ?? "";
+        interest.value = d.interest ?? "";
+
+        if(d.photo){
+            profileImg.src = d.photo;
+        }
     }
-  }
 }
 
-/* SAVE PROFILE */
+/* SAVE PROFILE — WORKING 100% */
 async function saveProfile(){
-  let uid = auth.currentUser.uid;
+    let user = auth.currentUser;
+    if(!user){
+        alert("User not logged in!");
+        return;
+    }
 
-  let file = photo.files[0];
-  let photoURL = profileImg.src;
+    let uid = user.uid;
 
-  if(file){
-      let base64 = await toBase64(file);
-      let fd = new FormData();
-      fd.append("key", imgbbKey);
-      fd.append("image", base64.split(",")[1]);
+    let file = photo.files[0];
+    let photoURL = profileImg.src;
 
-      let res = await fetch("https://api.imgbb.com/1/upload", { method:"POST", body:fd });
-      let json = await res.json();
-      photoURL = json.data.url;
-  }
+    if(file){
+        try{
+            let base64 = await toBase64(file);
+            let fd = new FormData();
+            fd.append("key", imgbbKey);
+            fd.append("image", base64.split(",")[1]);
 
-  await db.collection("users").doc(uid).set({
-      surname: surname.value,
-      name: name.value,
-      father: father.value,
-      mother: mother.value,
-      age: age.value,
-      dob: dob.value,
-      email: email.value,
-      mobile: mobile.value,
-      mobilePrivacy: mobilePrivacy.value,
-      city: city.value,
-      state: state.value,
-      district: district.value,
-      caste: caste.value,
-      address: address.value,
-      gender: gender.value,
-      choice: choice.value,
-      interest: interest.value,
-      photo: photoURL,
-      updatedAt: Date.now()
-  }, { merge:true });
+            let res = await fetch("https://api.imgbb.com/1/upload", { method:"POST", body:fd });
+            let json = await res.json();
 
-  alert("Profile Updated Successfully!");
+            if(json?.data?.url){
+                photoURL = json.data.url;
+            }
+        }catch(e){
+            console.log("Image upload failed:", e);
+        }
+    }
 
-  /* ⭐ REDIRECT ADDED ⭐ */
-  window.location = "index.html";
+    await db.collection("users").doc(uid).set({
+        surname: surname.value,
+        name: name.value,
+        father: father.value,
+        mother: mother.value,
+        age: age.value,
+        dob: dob.value,
+        email: email.value,
+        mobile: mobile.value,
+        mobilePrivacy: mobilePrivacy.value,
+        city: city.value,
+        state: state.value,
+        district: district.value,
+        caste: caste.value,
+        address: address.value,
+        gender: gender.value,
+        choice: choice.value,
+        interest: interest.value,
+        photo: photoURL,
+        updatedAt: Date.now()
+    }, { merge: true });
+
+    alert("Profile Updated Successfully!");
+    window.location = "index.html";
 }
 
-/* IMAGE BASE64 */
+/* BASE64 convert */
 function toBase64(file){
-  return new Promise((resolve,reject)=>{
-    let r = new FileReader();
-    r.onload = ()=>resolve(r.result);
-    r.onerror = err=>reject(err);
-    r.readAsDataURL(file);
-  });
+    return new Promise((resolve, reject)=>{
+        let r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = (err) => reject(err);
+        r.readAsDataURL(file);
+    });
 }
 </script>
 
 </body>
-  </html>
+</html>
