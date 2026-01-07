@@ -1,162 +1,115 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Help Support – Admin Panel</title>
+<title>Admin Help Panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-    <style>
-        body {
-            font-family: Arial;
-            background: #f7f7f7;
-            padding: 15px;
-        }
-        h2 {
-            text-align: center;
-            background: #ff1493;
-            color: white;
-            padding: 12px;
-            border-radius: 10px;
-        }
-        .ticket {
-            background: white;
-            padding: 15px;
-            border-radius: 12px;
-            margin-top: 12px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.1);
-        }
-        .status {
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-        }
-        .pending {
-            background: orange; 
-            color: white;
-        }
-        .done {
-            background: green;
-            color: white;
-        }
-        textarea {
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #bbb;
-            margin-top: 10px;
-        }
-        button {
-            background: #ff1493;
-            padding: 10px 15px;
-            border: none;
-            color: white;
-            border-radius: 6px;
-            margin-top: 8px;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #d40074;
-        }
-        .reply-block {
-            background: #ffe6f3;
-            padding: 10px;
-            border-left: 4px solid #ff1493;
-            border-radius: 6px;
-            margin-top: 10px;
-        }
-    </style>
+<style>
+body {
+  font-family: Arial;
+  background: #ffe6f2;
+  margin: 0;
+  padding: 0;
+}
+.container {
+  width: 90%;
+  max-width: 500px;
+  background: white;
+  margin: 25px auto;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 0 10px #ff99cc;
+}
+h2 {
+  text-align: center;
+  color: #ff4da6;
+}
+.card {
+  background:#fff0f7;
+  padding:15px;
+  margin-top:20px;
+  border-radius:10px;
+  border-left:4px solid #ff4da6;
+}
+textarea {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #ff80bf;
+  border-radius: 10px;
+  background:#fff5fa;
+  margin-top:10px;
+}
+button {
+  width: 100%;
+  padding: 12px;
+  background: #ff4da6;
+  color:white;
+  font-size: 17px;
+  border-radius: 10px;
+  border:none;
+  margin-top: 10px;
+}
+</style>
 </head>
 <body>
 
-<h2>Help Support – Admin Dashboard</h2>
+<div class="container">
+  <h2>Admin - Help Requests</h2>
 
-<div id="ticketBox">Loading...</div>
+  <div id="requestList">Loading...</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
+  authDomain: "sathimere-415fa.firebaseapp.com",
+  databaseURL: "https://sathimere-415fa-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "sathimere-415fa",
+  storageBucket: "sathimere-415fa.firebasestorage.app",
+  messagingSenderId: "290492321074",
+  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
+};
 
-    /* ---------------- FIREBASE CONNECT ---------------- */
-    const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_STORAGE.appspot.com",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
-    };
+firebase.initializeApp(firebaseConfig);
+let db = firebase.database();
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+db.ref("HelpRequests").on("value", function(snapshot) {
+  let data = snapshot.val();
+  let box = document.getElementById("requestList");
+  box.innerHTML = "";
 
-    const box = document.getElementById("ticketBox");
+  if (!data) {
+    box.innerHTML = "No requests found.";
+    return;
+  }
 
+  Object.keys(data).reverse().forEach(id => {
+    let req = data[id];
+    box.innerHTML += `
+      <div class="card">
+        <b>User:</b> ${req.username}<br>
+        <b>Message:</b> ${req.message}<br><br>
+        <textarea id="reply_${id}" placeholder="Type admin reply...">${req.reply}</textarea>
+        <button onclick="sendReply('${id}')">Send Reply</button>
+      </div>
+    `;
+  });
+});
 
-    /* ---------------- LOAD ALL TICKETS ---------------- */
-    function loadTickets() {
-        db.collection("helpRequests")
-        .orderBy("timestamp", "desc")
-        .onSnapshot(snapshot => {
+function sendReply(id) {
+  let replyText = document.getElementById("reply_" + id).value;
 
-            box.innerHTML = "";
+  db.ref("HelpRequests/" + id).update({
+    reply: replyText
+  });
 
-            snapshot.forEach(doc => {
-                let t = doc.data();
-
-                box.innerHTML += `
-                    <div class="ticket">
-
-                        <b>Name:</b> ${t.name} <br>
-                        <b>Email:</b> ${t.email} <br><br>
-
-                        <b>Message:</b><br>
-                        ${t.message}<br><br>
-
-                        <span class="status ${t.reply ? 'done' : 'pending'}">
-                            ${t.reply ? 'Replied' : 'Pending'}
-                        </span>
-
-                        ${t.reply ? `
-                            <div class="reply-block">
-                                <b>Your Reply:</b><br>${t.reply}
-                            </div>
-                        ` : ""}
-
-                        <textarea id="reply-${doc.id}" placeholder="Write reply..."></textarea>
-
-                        <button onclick="sendReply('${doc.id}')">Send Reply</button>
-
-                    </div>
-                `;
-            });
-
-        });
-    }
-
-    loadTickets();
-
-
-    /* ---------------- SEND ADMIN REPLY ---------------- */
-    function sendReply(id){
-        let msg = document.getElementById("reply-" + id).value.trim();
-
-        if(msg === ""){
-            alert("Reply cannot be empty!");
-            return;
-        }
-
-        db.collection("helpRequests").doc(id).update({
-            reply: msg,
-            status: "done"
-        }).then(()=>{
-            alert("Reply sent!");
-            document.getElementById("reply-" + id).value = "";
-        });
-    }
-
+  alert("Reply sent!");
+}
 </script>
 
 </body>
-    </html>
+</html>
