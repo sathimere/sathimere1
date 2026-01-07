@@ -6,57 +6,54 @@
 
   <style>
     body { font-family: Arial; padding:20px; }
-
     .box{
-      max-width:400px;
-      margin:auto;
-      padding:20px;
-      border:1px solid #ddd;
+      max-width:400px; 
+      margin:auto; 
+      padding:20px; 
+      border:1px solid #ddd; 
       border-radius:10px;
       box-shadow:0 0 10px rgba(0,0,0,0.1);
     }
-
     input,button{
-      width:100%; padding:10px;
-      margin:10px 0; font-size:16px;
+      width:100%; 
+      padding:10px; 
+      margin:10px 0; 
+      font-size:16px;
       border-radius:5px;
     }
-
     button{
-      background:#4CAF50; color:#fff;
-      border:none; cursor:pointer;
+      background:#4CAF50; 
+      color:#fff; 
+      border:none;
+      cursor:pointer;
     }
-
-    button:hover{ background:#45a049; }
-
-    .balanceBox{
-      max-width:400px;
-      margin:auto;
-      padding:15px;
-      font-size:22px;
-      background:#e8ffe8;
-      border-radius:10px;
+    button:hover{
+      background:#45a049;
+    }
+    #balBox{
+      background:#f1f1f1;
+      padding:10px;
+      margin-bottom:15px;
+      border-radius:5px;
       text-align:center;
-      margin-bottom:20px;
-      border:1px solid #b6ffb6;
+      font-size:18px;
+      font-weight:bold;
     }
   </style>
 
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
   <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-</head>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
 
+</head>
 <body>
 
-<!-- 🔵 WALLET BALANCE SHOW -->
-<div class="balanceBox">
-  Wallet Balance: ₹ <span id="walletBalance">0</span>
-</div>
-
 <div class="box">
+
+  <div id="balBox">Balance: ₹0</div>
+
   <h2>Add Money to Wallet</h2>
 
   <input type="number" id="amount" placeholder="Enter Amount (₹)" />
@@ -66,49 +63,55 @@
   <p id="msg" style="color:red;"></p>
 </div>
 
-
 <script>
 
-  // ================================
-  // 🔥 FIREBASE
-  // ================================
+  /* ------------------------------------
+      CONFIG
+  ------------------------------------*/
+
+  const BACKEND = "https://sathimere-backend.onrender.com";
+  const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
+
+  const uid = "user_001"; // अपनी login UID lagana
+
+  /* ------------------------------------
+      FIREBASE INIT
+  ------------------------------------*/
+
   const firebaseConfig = {
-    apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
-    authDomain: "sathimere-415fa.firebaseapp.com",
-    projectId: "sathimere-415fa",
-    storageBucket: "sathimere-415fa.firebasestorage.app",
-    messagingSenderId: "290492321074",
-    appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
+    apiKey: "xxxx",
+    authDomain: "xxxx",
+    projectId: "xxxx",
   };
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
-  // user ID (replace later)
-  const uid = "user_001";
 
-  // Load balance from Firebase
-  function loadBalance() {
-    db.collection("wallet").doc(uid).onSnapshot(doc=>{
-      if (doc.exists) {
-        document.getElementById("walletBalance").innerText = doc.data().balance || 0;
-      }
-    });
+  /* ------------------------------------
+      FETCH CURRENT BALANCE
+  ------------------------------------*/
+
+  async function loadBalance() {
+    try {
+      let doc = await db.collection("wallet").doc(uid).get();
+      let bal = doc.exists ? doc.data().balance : 0;
+
+      document.getElementById("balBox").innerText = "Balance: ₹" + bal;
+    } catch (e) {
+      console.log("Balance error:", e);
+    }
   }
 
-  loadBalance(); // Initial load
+  loadBalance();
 
 
-
-  // ================================
-  // 🔥 BACKEND + PAYMENT
-  // ================================
-  const BACKEND = "https://sathimere-backend.onrender.com";
-  const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
-
+  /* ------------------------------------
+      ADD MONEY
+  ------------------------------------*/
 
   async function addMoney() {
-    let amount = document.getElementById("amount").value;
+    let amount = Number(document.getElementById("amount").value);
 
     if (!amount || amount < 10) {
       document.getElementById("msg").innerText = "Minimum ₹10 required.";
@@ -119,11 +122,11 @@
 
     try {
 
-      // 1️⃣ Create order
+      /* ---- 1) Create Razorpay Order ---- */
       let orderRes = await fetch(`${BACKEND}/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Number(amount), uid })
+        body: JSON.stringify({ amount, uid })
       });
 
       let order = await orderRes.json();
@@ -133,7 +136,7 @@
         return;
       }
 
-      // 2️⃣ Open Razorpay popup
+      /* ---- 2) Start Razorpay Checkout ---- */
       var options = {
         "key": RAZORPAY_KEY,
         "amount": order.amount,
@@ -146,13 +149,13 @@
 
           document.getElementById("msg").innerText = "Verifying payment...";
 
-          // 3️⃣ Verify on backend
+          /* ---- 3) Backend Verification ---- */
           let verifyRes = await fetch(`${BACKEND}/verify-payment`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               uid,
-              amount: Number(amount),
+              amount,
               order_id: response.razorpay_order_id,
               payment_id: response.razorpay_payment_id
             })
@@ -162,14 +165,18 @@
 
           if (verify.status === "success") {
 
-            // 4️⃣ Firebase wallet update
-            db.collection("wallet").doc(uid).set({
-              balance: firebase.firestore.FieldValue.increment(Number(amount))
-            }, { merge: true });
+            /* ---- 4) Update Firebase Wallet ---- */
+            await db.collection("wallet").doc(uid).set(
+              { balance: firebase.firestore.FieldValue.increment(amount) },
+              { merge: true }
+            );
 
-            alert("Payment Successful! ₹" + amount + " added.");
+            alert("Payment Successful! Wallet Updated.");
+
             document.getElementById("amount").value = "";
             document.getElementById("msg").innerText = "";
+
+            loadBalance();
 
           } else {
             document.getElementById("msg").innerText = "Payment verification failed.";
@@ -183,7 +190,7 @@
       rzp.open();
 
     } catch (e) {
-      console.log(e);
+      console.log("ERROR:", e);
       document.getElementById("msg").innerText = "Something went wrong.";
     }
   }
@@ -191,4 +198,4 @@
 </script>
 
 </body>
-</html>
+  </html>
