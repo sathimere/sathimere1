@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Admin Wallet Manager</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+
+<style>
+body{
+  font-family: Arial;
+  background:#ffe4f0;
+  padding:15px;
+}
+
+.topbar{
+  background:#ff1493;
+  padding:12px;
+  color:white;
+  font-size:20px;
+  text-align:center;
+  border-radius:10px;
+  margin-bottom:15px;
+  position:relative;
+}
+
+.back-btn{
+  position:absolute;
+  left:10px;
+  top:8px;
+  background:white;
+  color:#ff1493;
+  border:none;
+  padding:6px 10px;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.input{
+  width:100%;
+  padding:12px;
+  border:1px solid #ccc;
+  border-radius:8px;
+  margin-bottom:10px;
+}
+
+.btn{
+  width:100%;
+  padding:12px;
+  background:#ff1493;
+  color:white;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:16px;
+  margin-top:10px;
+}
+
+.box{
+  background:white;
+  padding:15px;
+  border-radius:10px;
+  box-shadow:0 0 10px #ff9ac7;
+  margin-top:15px;
+}
+</style>
+
+</head>
+<body>
+
+<div class="topbar">
+  Wallet Manager
+  <button class="back-btn" onclick="goBack()">Back</button>
+</div>
+
+<input id="uid" class="input" placeholder="Enter User UID">
+
+<button class="btn" onclick="loadWallet()">Load User Wallet</button>
+
+<div id="walletBox" class="box" style="display:none;">
+  <h3>User Wallet</h3>
+  <b>Name:</b> <span id="w_name"></span><br>
+  <b>Email:</b> <span id="w_email"></span><br>
+  <b>Current Wallet:</b> ₹<span id="w_balance">0</span><br><br>
+
+  <input id="amount" class="input" placeholder="Enter Amount">
+
+  <button class="btn" style="background:#00b33c" onclick="addMoney()">Add Money</button>
+  <button class="btn" style="background:#ff0033" onclick="deductMoney()">Deduct Money</button>
+</div>
+
+<script>
+
+/* ---------------- BACK BUTTON ---------------- */
+function goBack(){
+  window.location = "admin.html";
+}
+
+/* ---------------- LOAD WALLET ---------------- */
+async function loadWallet(){
+  let id = uid.value.trim();
+  if(id === "") return alert("Enter UID!");
+
+  let d = await db.collection("users").doc(id).get();
+
+  if(!d.exists){
+    alert("User not found!");
+    return;
+  }
+
+  let u = d.data();
+
+  document.getElementById("w_name").innerText = (u.name || "") + " " + (u.surname || "");
+  document.getElementById("w_email").innerText = u.email || "";
+  document.getElementById("w_balance").innerText = u.wallet || 0;
+
+  document.getElementById("walletBox").style.display = "block";
+}
+
+/* ---------------- ADD MONEY ---------------- */
+async function addMoney(){
+  let id = uid.value.trim();
+  let amt = Number(amount.value);
+
+  if(isNaN(amt) || amt <= 0){
+    alert("Enter valid amount");
+    return;
+  }
+
+  let doc = await db.collection("users").doc(id).get();
+  let current = doc.data().wallet || 0;
+
+  let newBal = current + amt;
+
+  await db.collection("users").doc(id).update({
+    wallet: newBal
+  });
+
+  alert("₹"+amt+" added!");
+  document.getElementById("w_balance").innerText = newBal;
+}
+
+/* ---------------- DEDUCT MONEY ---------------- */
+async function deductMoney(){
+  let id = uid.value.trim();
+  let amt = Number(amount.value);
+
+  if(isNaN(amt) || amt <= 0){
+    alert("Enter valid amount");
+    return;
+  }
+
+  let doc = await db.collection("users").doc(id).get();
+  let current = doc.data().wallet || 0;
+
+  if(amt > current){
+    alert("Insufficient balance!");
+    return;
+  }
+
+  let newBal = current - amt;
+
+  await db.collection("users").doc(id).update({
+    wallet: newBal
+  });
+
+  alert("₹"+amt+" deducted!");
+  document.getElementById("w_balance").innerText = newBal;
+}
+
+</script>
+
+</body>
+</html>
