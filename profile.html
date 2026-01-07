@@ -176,24 +176,22 @@ label{
     <textarea id="interest"></textarea>
 
     <button class="save-btn" onclick="saveProfile()">Save Profile</button>
+
   </div>
 </div>
 
 <script>
 const imgbbKey = "5d029a90e51dd6f7960ae7c3a7ac4200";
 
-
 /* LOAD USER DATA */
-auth.onAuthStateChanged(async (user)=>{
-    if(!user){
-        window.location="login.html";
+auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+        window.location = "login.html";
         return;
     }
     loadData(user.uid);
 });
 
-
-/* GET DATA SAFELY EVEN IF EMPTY */
 async function loadData(uid){
     let doc = await db.collection("users").doc(uid).get();
 
@@ -224,65 +222,53 @@ async function loadData(uid){
     }
 }
 
-
-/* SAVE PROFILE — FIXED (NO CRASH, EVEN IF FIELDS EMPTY) */
+/* SAVE PROFILE */
 async function saveProfile(){
-
-    let user = auth.currentUser;
-    if(!user) return;
-
-    let uid = user.uid;
+    let uid = auth.currentUser.uid;
 
     let file = photo.files[0];
     let photoURL = profileImg.src;
 
-    // If photo is selected
     if(file){
-        try {
-            let base64 = await toBase64(file);
-            let fd = new FormData();
-            fd.append("key", imgbbKey);
-            fd.append("image", base64.split(",")[1]);
+        let base64 = await toBase64(file);
+        let fd = new FormData();
+        fd.append("key", imgbbKey);
+        fd.append("image", base64.split(",")[1]);
 
-            let res = await fetch("https://api.imgbb.com/1/upload", { method:"POST", body:fd });
-            let json = await res.json();
-            if(json?.data?.url){
-                photoURL = json.data.url;
-            }
-        } catch(e){
-            console.log("Image upload failed:", e);
-        }
+        let res = await fetch("https://api.imgbb.com/1/upload", { method: "POST", body: fd });
+        let json = await res.json();
+        photoURL = json.data.url;
     }
 
-    // SAVE without any required fields (NO CRASH)
     await db.collection("users").doc(uid).set({
-        surname: surname.value || "",
-        name: name.value || "",
-        father: father.value || "",
-        mother: mother.value || "",
-        age: age.value || "",
-        dob: dob.value || "",
-        email: email.value || "",
-        mobile: mobile.value || "",
-        mobilePrivacy: mobilePrivacy.value || "public",
-        city: city.value || "",
-        state: state.value || "",
-        district: district.value || "",
-        caste: caste.value || "",
-        address: address.value || "",
-        gender: gender.value || "",
-        choice: choice.value || "",
-        interest: interest.value || "",
-        photo: photoURL || "",
+        surname: surname.value,
+        name: name.value,
+        father: father.value,
+        mother: mother.value,
+        age: age.value,
+        dob: dob.value,
+        email: email.value,
+        mobile: mobile.value,
+        mobilePrivacy: mobilePrivacy.value,
+        city: city.value,
+        state: state.value,
+        district: district.value,
+        caste: caste.value,
+        address: address.value,
+        gender: gender.value,
+        choice: choice.value,
+        interest: interest.value,
+        photo: photoURL,
         updatedAt: Date.now()
-    }, { merge:true });
+    }, { merge: true });
 
     alert("Profile Updated Successfully!");
+
+    /* ⭐ Redirect after save */
     window.location = "index.html";
 }
 
-
-/* IMAGE → BASE64 */
+/* BASE64 */
 function toBase64(file){
     return new Promise((resolve,reject)=>{
         let r = new FileReader();
