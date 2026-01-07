@@ -8,6 +8,7 @@
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
 <style>
     body {
@@ -24,7 +25,7 @@
         border-radius: 12px;
         box-shadow: 0 0 10px #0002;
     }
-    h2 { text-align: center; }
+    h2 { text-align: center; margin-bottom: 15px; }
     input, textarea {
         width: 100%;
         padding: 12px;
@@ -41,6 +42,7 @@
         border: none;
         border-radius: 10px;
         font-size: 16px;
+        cursor: pointer;
     }
     .reply-box {
         margin-top: 20px;
@@ -48,6 +50,7 @@
         padding: 15px;
         border-radius: 10px;
         border-left: 4px solid #005eff;
+        display: none;
     }
 </style>
 
@@ -62,67 +65,72 @@
     
     <button onclick="sendHelp()">Submit Request</button>
 
-    <div id="replyBox" class="reply-box" style="display:none;">
+    <div id="replyBox" class="reply-box">
         <h3>Admin Reply</h3>
         <p id="replyText"></p>
     </div>
 </div>
 
 <script>
+/* ---------------- FIREBASE CONFIG ---------------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
+  authDomain: "sathimere-415fa.firebaseapp.com",
+  databaseURL: "https://sathimere-415fa-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "sathimere-415fa",
+  storageBucket: "sathimere-415fa.firebasestorage.app",
+  messagingSenderId: "290492321074",
+  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
+};
 
-    // ---------------- FIREBASE CONFIG (FINAL WORKING) ----------------
-    const firebaseConfig = {
-        apiKey: "AIzaSyC8Cxxxxx-xxxx",
-        authDomain: "ac-colour-prediction.firebaseapp.com",
-        projectId: "ac-colour-prediction",
-        storageBucket: "ac-colour-prediction.appspot.com",
-        messagingSenderId: "108447xxxxx",
-        appId: "1:108447xxxxx:web:xxxxxx"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    //-----------------------------------------------------------------
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+/* ------------------------------------------------- */
 
-    // CREATE UNIQUE USER ID (No Auth Needed)
-    let currentUser = localStorage.getItem("uid");
-    if (!currentUser) {
-        currentUser = "USER-" + Date.now();
-        localStorage.setItem("uid", currentUser);
+// USER MUST BE LOGGED IN → FIREBASE UID USED AS TICKET ID
+auth.onAuthStateChanged(user => {
+    if (!user) {
+        alert("Please login first!");
+        return;
+    }
+    currentUser = user.uid;
+    loadReply();
+});
+
+/* ---------------- SEND HELP REQUEST ---------------- */
+function sendHelp() {
+    const subject = document.getElementById("subject").value.trim();
+    const message = document.getElementById("message").value.trim();
+
+    if (!subject || !message) {
+        alert("Please fill all fields.");
+        return;
     }
 
-    // ---------------- SEND HELP REQUEST ----------------
-    function sendHelp() {
-        const subject = document.getElementById("subject").value;
-        const message = document.getElementById("message").value;
+    db.collection("helpRequests").doc(currentUser).set({
+        subject: subject,
+        message: message,
+        reply: "",
+        userId: currentUser,
+        timestamp: Date.now()
+    })
+    .then(() => {
+        alert("Request sent successfully!");
+    })
+    .catch(err => alert("Error: " + err.message));
+}
 
-        if (subject.trim() === "" || message.trim() === "") {
-            alert("Please fill all fields.");
-            return;
-        }
-
-        db.collection("helpRequests").doc(currentUser).set({
-            subject: subject,
-            message: message,
-            reply: "",
-            timestamp: Date.now()
-        })
-        .then(() => {
-            alert("Request sent successfully!");
-        })
-        .catch(err => alert("Error: " + err));
-    }
-
-    // ---------------- CHECK ADMIN REPLY LIVE ----------------
+/* ---------------- LIVE ADMIN REPLY LISTENER ---------------- */
+function loadReply() {
     db.collection("helpRequests").doc(currentUser)
-        .onSnapshot(doc => {
-            if (doc.exists) {
-                let data = doc.data();
-                if (data.reply && data.reply !== "") {
-                    document.getElementById("replyText").innerText = data.reply;
-                    document.getElementById("replyBox").style.display = "block";
-                }
-            }
-        });
+    .onSnapshot(doc => {
+        if (doc.exists && doc.data().reply !== "") {
+            document.getElementById("replyText").innerText = doc.data().reply;
+            document.getElementById("replyBox").style.display = "block";
+        }
+    });
+}
 
 </script>
 
