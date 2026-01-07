@@ -1,167 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Help & Support</title>
+<meta charset="UTF-8">
+<title>Help & Support</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
-    <style>
-        body{
-            font-family: Arial;
-            background:#f9f9f9;
-            padding:15px;
-            margin:0;
-        }
-        h2{
-            text-align:center;
-            background:#ff1493;
-            padding:12px;
-            border-radius:10px;
-            color:white;
-        }
-        .input-box, textarea{
-            width:100%;
-            padding:12px;
-            margin-top:8px;
-            border-radius:8px;
-            border:1px solid #ccc;
-        }
-        button{
-            width:100%;
-            background:#ff1493;
-            padding:12px;
-            border:none;
-            color:white;
-            margin-top:10px;
-            border-radius:8px;
-            font-size:16px;
-            cursor:pointer;
-        }
-        .ticket{
-            background:white;
-            padding:15px;
-            margin-top:15px;
-            border-radius:10px;
-            box-shadow:0px 0px 5px rgba(0,0,0,0.1);
-        }
-        .status{
-            display:inline-block;
-            padding:4px 10px;
-            border-radius:6px;
-            font-size:12px;
-        }
-        .pending{ background:orange; color:white; }
-        .done{ background:green; color:white; }
-        .reply-box{
-            margin-top:10px;
-            padding:10px;
-            border-left:4px solid #ff1493;
-            background:#ffe6f2;
-            border-radius:8px;
-        }
-    </style>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f5f7fa;
+        margin: 0;
+        padding: 20px;
+    }
+    .container {
+        max-width: 450px;
+        margin: auto;
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 0 10px #0002;
+    }
+    h2 { text-align: center; }
+    input, textarea {
+        width: 100%;
+        padding: 12px;
+        margin-top: 10px;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+    }
+    button {
+        width: 100%;
+        padding: 12px;
+        margin-top: 10px;
+        background: #005eff;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+    }
+    .reply-box {
+        margin-top: 20px;
+        background: #e9f3ff;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 4px solid #005eff;
+    }
+</style>
+
 </head>
 <body>
 
-<h2>Help & Support</h2>
+<div class="container">
+    <h2>Help & Support</h2>
 
-<h3>Submit Your Query</h3>
+    <input type="text" id="subject" placeholder="Enter Subject">
+    <textarea id="message" rows="5" placeholder="Describe your issue..."></textarea>
+    
+    <button onclick="sendHelp()">Submit Request</button>
 
-<input id="name" class="input-box" placeholder="Your Name">
-<input id="email" class="input-box" placeholder="Your Email">
-<textarea id="message" placeholder="Write your problem..."></textarea>
-
-<button onclick="sendHelp()">Submit</button>
-
-<h3>Your Previous Queries</h3>
-<div id="myTickets"></div>
+    <div id="replyBox" class="reply-box" style="display:none;">
+        <h3>Admin Reply</h3>
+        <p id="replyText"></p>
+    </div>
+</div>
 
 <script>
-    /* ---------------- FIREBASE CONNECT ---------------- */
+    // ---------------- FIREBASE CONFIG ----------------
     const firebaseConfig = {
-        apiKey: "AIzaSyD2yY-xxxxxxxxxxxxxxxx",
-        authDomain: "sathimere-xxxx.firebaseapp.com",
-        projectId: "sathimere-xxxx",
-        storageBucket: "sathimere-xxxx.appspot.com",
-        messagingSenderId: "78xxxxxxx",
-        appId: "1:78xxxxxxxx:web:xxxxxxxxxx"
+        apiKey: "AIzaSyC8Cxxxxx-xxxx", 
+        authDomain: "ac-colour-prediction.firebaseapp.com",
+        projectId: "ac-colour-prediction",
+        storageBucket: "ac-colour-prediction.appspot.com",
+        messagingSenderId: "108447xxxxx",
+        appId: "1:108447xxxxx:web:xxxxxx"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
+    // -------------------------------------------------
 
+    // Temporary/demo user login (replace with your login system)
+    auth.signInAnonymously();
 
-    /* ---------------- SEND HELP REQUEST ---------------- */
+    let currentUser = null;
+    auth.onAuthStateChanged(user => {
+        currentUser = user.uid;
+        checkReply();
+    });
+
+    // ---------------- SEND HELP REQUEST ----------------
     function sendHelp() {
-        let name = document.getElementById("name").value.trim();
-        let email = document.getElementById("email").value.trim();
-        let message = document.getElementById("message").value.trim();
+        const subject = document.getElementById("subject").value;
+        const message = document.getElementById("message").value;
 
-        if(!name || !email || !message){
-            alert("Please fill all fields!");
+        if (subject.trim() === "" || message.trim() === "") {
+            alert("Please fill all fields.");
             return;
         }
 
-        db.collection("helpRequests").add({
-            name,
-            email,
-            message,
+        db.collection("helpRequests").doc(currentUser).set({
+            subject: subject,
+            message: message,
             reply: "",
-            status: "pending",
-            timestamp: new Date()
-        }).then(()=>{
-            alert("Message sent! Our team will reply soon.");
-            document.getElementById("message").value = "";
-        });
+            timestamp: Date.now()
+        })
+        .then(() => {
+            alert("Request sent to Admin!");
+        })
+        .catch(err => alert("Error: " + err));
     }
 
-
-    /* ---------------- LOAD USER TICKETS ---------------- */
-    function loadMyTickets(){
-        let email = localStorage.getItem("userEmail");
-
-        // If user has not typed email yet, wait until user types
-        document.getElementById("email").addEventListener("change", function(){
-            localStorage.setItem("userEmail", this.value);
-            loadMyTickets();
-        });
-
-        if(!email) return;
-
-        db.collection("helpRequests")
-        .where("email", "==", email)
-        .orderBy("timestamp", "desc")
-        .onSnapshot(res=>{
-            let html = "";
-            res.forEach(doc=>{
-                let t = doc.data();
-
-                html += `
-                    <div class="ticket">
-                        <b>Your Message:</b><br>${t.message}<br><br>
-
-                        <span class="status ${t.reply ? 'done':'pending'}">
-                            ${t.reply ? 'Replied' : 'Pending'}
-                        </span>
-
-                        ${t.reply ? `
-                          <div class="reply-box">
-                            <b>Admin Reply:</b><br>${t.reply}
-                          </div>
-                        ` : ""}
-                    </div>
-                `;
+    // ---------------- CHECK ADMIN REPLY LIVE ----------------
+    function checkReply() {
+        db.collection("helpRequests").doc(currentUser)
+            .onSnapshot(doc => {
+                if (doc.exists && doc.data().reply !== "") {
+                    document.getElementById("replyText").innerText = doc.data().reply;
+                    document.getElementById("replyBox").style.display = "block";
+                }
             });
-
-            document.getElementById("myTickets").innerHTML = html;
-        });
     }
 
-    loadMyTickets();
 </script>
 
 </body>
