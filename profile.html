@@ -182,7 +182,7 @@ label{
 <script>
 const imgbbKey = "5d029a90e51dd6f7960ae7c3a7ac4200";
 
-/* 🔄 LOAD USER DATA */
+/* LOAD USER DATA */
 auth.onAuthStateChanged(async (user) => {
     if (!user) {
         window.location = "login.html";
@@ -197,36 +197,36 @@ async function loadData(uid){
     if(doc.exists){
         let d = doc.data();
 
-        document.getElementById("surname").value = d.surname || "";
-        document.getElementById("name").value = d.name || "";
-        document.getElementById("father").value = d.father || "";
-        document.getElementById("mother").value = d.mother || "";
-        document.getElementById("age").value = d.age || "";
-        document.getElementById("dob").value = d.dob || "";
-        document.getElementById("email").value = d.email || "";
-        document.getElementById("mobile").value = d.mobile || "";
-        document.getElementById("mobilePrivacy").value = d.mobilePrivacy || "public";
-        document.getElementById("city").value = d.city || "";
-        document.getElementById("state").value = d.state || "";
-        document.getElementById("district").value = d.district || "";
-        document.getElementById("caste").value = d.caste || "";
-        document.getElementById("address").value = d.address || "";
-        document.getElementById("gender").value = d.gender || "";
-        document.getElementById("choice").value = d.choice || "";
-        document.getElementById("interest").value = d.interest || "";
+        surname.value = d.surname || "";
+        name.value = d.name || "";
+        father.value = d.father || "";
+        mother.value = d.mother || "";
+        age.value = d.age || "";
+        dob.value = d.dob || "";
+        email.value = d.email || "";
+        mobile.value = d.mobile || "";
+        mobilePrivacy.value = d.mobilePrivacy || "public";
+        city.value = d.city || "";
+        state.value = d.state || "";
+        district.value = d.district || "";
+        caste.value = d.caste || "";
+        address.value = d.address || "";
+        gender.value = d.gender || "";
+        choice.value = d.choice || "";
+        interest.value = d.interest || "";
 
         if(d.photo){
-            document.getElementById("profileImg").src = d.photo;
+            profileImg.src = d.photo;
         }
     }
 }
 
-/* 💾 SAVE PROFILE */
+/* SAVE PROFILE + REDIRECT */
 async function saveProfile(){
     let uid = auth.currentUser.uid;
 
-    let file = document.getElementById("photo").files[0];
-    let photoURL = document.getElementById("profileImg").src;
+    let file = photo.files[0];
+    let photoURL = profileImg.src;
 
     if(file){
         let base64 = await toBase64(file);
@@ -262,6 +262,9 @@ async function saveProfile(){
     }, { merge: true });
 
     alert("Profile Updated Successfully!");
+
+    /* ⭐ REDIRECT AFTER SAVE */
+    window.location = "index.html";
 }
 
 /* IMAGE → BASE64 */
@@ -276,4 +279,4 @@ function toBase64(file){
 </script>
 
 </body>
-  </html>
+</html>
