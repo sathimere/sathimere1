@@ -65,23 +65,23 @@
 
 <script>
 
-  /* ------------------------------------
-      CONFIG
-  ------------------------------------*/
-
   const BACKEND = "https://sathimere-backend.onrender.com";
   const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
 
-  const uid = "user_001"; // अपनी login UID lagana
+  const uid = "user_001";
 
-  /* ------------------------------------
-      FIREBASE INIT
-  ------------------------------------*/
 
+  /* ---------------------------------------------
+      FIREBASE CONFIG (Correct + Complete)
+  ----------------------------------------------*/
   const firebaseConfig = {
-    apiKey: "xxxx",
-    authDomain: "xxxx",
-    projectId: "xxxx",
+    apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
+    authDomain: "sathimere-415fa.firebaseapp.com",
+    databaseURL: "https://sathimere-415fa-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "sathimere-415fa",
+    storageBucket: "sathimere-415fa.firebasestorage.app",
+    messagingSenderId: "290492321074",
+    appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
   };
 
   firebase.initializeApp(firebaseConfig);
@@ -122,7 +122,6 @@
 
     try {
 
-      /* ---- 1) Create Razorpay Order ---- */
       let orderRes = await fetch(`${BACKEND}/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -136,7 +135,6 @@
         return;
       }
 
-      /* ---- 2) Start Razorpay Checkout ---- */
       var options = {
         "key": RAZORPAY_KEY,
         "amount": order.amount,
@@ -149,7 +147,6 @@
 
           document.getElementById("msg").innerText = "Verifying payment...";
 
-          /* ---- 3) Backend Verification ---- */
           let verifyRes = await fetch(`${BACKEND}/verify-payment`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -165,11 +162,20 @@
 
           if (verify.status === "success") {
 
-            /* ---- 4) Update Firebase Wallet ---- */
-            await db.collection("wallet").doc(uid).set(
-              { balance: firebase.firestore.FieldValue.increment(amount) },
-              { merge: true }
-            );
+            /* ------------------------------------------------------------------
+                FIXED — wallet/user_001/balance structure को follow करता है
+            ------------------------------------------------------------------*/
+
+            const ref = db.collection("wallet").doc(uid);
+            let w = await ref.get();
+
+            if (!w.exists) {
+              await ref.set({ balance: amount });
+            } else {
+              await ref.update({
+                balance: (w.data().balance || 0) + amount
+              });
+            }
 
             alert("Payment Successful! Wallet Updated.");
 
@@ -198,4 +204,4 @@
 </script>
 
 </body>
-  </html>
+</html>
