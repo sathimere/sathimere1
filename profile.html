@@ -115,8 +115,7 @@ label{
     <label>Surname</label>
     <input id="surname" type="text">
 
-    <label>Name</label>
-    <input id="name" type="text">
+    <!-- NAME FIELD REMOVED SUCCESSFULLY -->
 
     <label>Father's Name</label>
     <input id="father" type="text">
@@ -193,7 +192,7 @@ auth.onAuthStateChanged(async (user)=>{
 });
 
 
-/* GET DATA SAFELY EVEN IF EMPTY */
+/* GET DATA SAFELY */
 async function loadData(uid){
     let doc = await db.collection("users").doc(uid).get();
 
@@ -201,7 +200,6 @@ async function loadData(uid){
         let d = doc.data();
 
         surname.value = d.surname || "";
-        name.value = d.name || "";
         father.value = d.father || "";
         mother.value = d.mother || "";
         age.value = d.age || "";
@@ -225,7 +223,7 @@ async function loadData(uid){
 }
 
 
-/* SAVE PROFILE — FIXED (NO CRASH, EVEN IF FIELDS EMPTY) */
+/* SAVE PROFILE */
 async function saveProfile(){
 
     let user = auth.currentUser;
@@ -236,7 +234,7 @@ async function saveProfile(){
     let file = photo.files[0];
     let photoURL = profileImg.src;
 
-    // If photo is selected
+    // If photo selected
     if(file){
         try {
             let base64 = await toBase64(file);
@@ -254,10 +252,8 @@ async function saveProfile(){
         }
     }
 
-    // SAVE without any required fields (NO CRASH)
     await db.collection("users").doc(uid).set({
         surname: surname.value || "",
-        name: name.value || "",
         father: father.value || "",
         mother: mother.value || "",
         age: age.value || "",
@@ -282,7 +278,7 @@ async function saveProfile(){
 }
 
 
-/* IMAGE → BASE64 */
+/* FILE → BASE64 */
 function toBase64(file){
     return new Promise((resolve,reject)=>{
         let r = new FileReader();
