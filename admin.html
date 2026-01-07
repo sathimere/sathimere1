@@ -118,10 +118,9 @@ auth.onAuthStateChanged((user)=>{
      return;
    }
 
-   // ADMIN email check – FIXED
    if(user.email !== "sathimere.admin@gmail.com"){
      alert("Access Denied!");
-     auth.signOut();     // FIXED: pehle redirect hota tha
+     auth.signOut();
      return;
    }
 
@@ -129,7 +128,7 @@ auth.onAuthStateChanged((user)=>{
 });
 
 
-/* ---------------- LOAD USERS (SORT BY WALLET DESC) ---------------- */
+/* ---------------- LOAD USERS ---------------- */
 function loadUsers(){
   db.collection("users")
   .orderBy("wallet", "desc")
@@ -138,8 +137,6 @@ function loadUsers(){
     let html = "";
     res.forEach(doc=>{
       let u = doc.data();
-
-      // FIXED: wallet undefined bug
       let wallet = u.wallet ? u.wallet : 0;
 
       html += `
@@ -164,27 +161,46 @@ function loadUsers(){
 }
 
 
-/* ---------------- VIEW PROFILE (FIXED FIELDS) ---------------- */
+/* ---------------- FULL PROFILE VIEW ---------------- */
 async function viewProfile(uid){
-    let d = await db.collection("users").doc(uid).get();
-    if(!d.exists) return;
+  let d = await db.collection("users").doc(uid).get();
+  if(!d.exists) return;
 
-    let u = d.data();
+  let u = d.data();
 
-    document.getElementById("modalContent").innerHTML = `
-      <h3>${u.name || ""} ${u.surname || ""}</h3>
+  document.getElementById("modalContent").innerHTML = `
+    <h3>${u.name || ""} ${u.surname || ""}</h3>
 
-      <b>Email:</b> ${u.email || "Not available"}<br>
-      <b>Gender:</b> ${u.gender || "Not set"}<br>
-      <b>Age:</b> ${u.age || "Not set"}<br>
-      <b>Location:</b> ${u.city || ""}, ${u.state || ""}<br><br>
+    <b>Photo:</b><br>
+    <img src="${u.photo || ''}" style="width:90px;height:90px;border-radius:50%;border:2px solid #ff1493"><br><br>
 
-      <b>Wallet:</b> ₹${u.wallet || 0}<br><br>
+    <b>Father:</b> ${u.father || ""}<br>
+    <b>Mother:</b> ${u.mother || ""}<br><br>
 
-      <button class="btn" onclick="closeModal()">Close</button>
-    `;
+    <b>Age:</b> ${u.age || ""}<br>
+    <b>DOB:</b> ${u.dob || ""}<br>
+    <b>Gender:</b> ${u.gender || ""}<br><br>
 
-    document.getElementById("modal").style.display="flex";
+    <b>Email:</b> ${u.email || ""}<br>
+    <b>Mobile:</b> ${u.mobile || ""}<br>
+    <b>Mobile Privacy:</b> ${u.mobilePrivacy || ""}<br><br>
+
+    <b>City:</b> ${u.city || ""}<br>
+    <b>State:</b> ${u.state || ""}<br>
+    <b>District:</b> ${u.district || ""}<br>
+    <b>Caste:</b> ${u.caste || ""}<br><br>
+
+    <b>Address:</b><br>${u.address || ""}<br><br>
+
+    <b>Choice:</b><br>${u.choice || ""}<br><br>
+    <b>Interest:</b><br>${u.interest || ""}<br><br>
+
+    <b>Wallet:</b> ₹${u.wallet || 0}<br><br>
+
+    <button class="btn" onclick="closeModal()">Close</button>
+  `;
+
+  document.getElementById("modal").style.display="flex";
 }
 
 function closeModal(){
@@ -225,9 +241,9 @@ function filterUsers(){
 }
 
 
-/* ---------------- HELP PAGE FIXED ---------------- */
+/* ---------------- HELP SUPPORT FIX: NO LOGOUT ---------------- */
 function goHelp(){
-  window.location = "help-admin.html";  // no logout now
+  window.location = "help-admin.html";
 }
 
 </script>
