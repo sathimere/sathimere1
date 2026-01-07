@@ -5,13 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
-body{margin:0;background:#f7f7f7;font-family:Arial;}
-.header{background:#ff4da6;color:white;text-align:center;padding:15px;font-size:20px;font-weight:bold;}
-.box{width:90%;margin:auto;margin-top:20px;background:white;border-radius:12px;padding:15px;box-shadow:0 0 6px rgba(0,0,0,0.1);}
-.balance{font-size:26px;font-weight:bold;color:#ff4da6;}
-input{width:100%;padding:12px;border:1px solid #ccc;border-radius:10px;margin-top:10px;}
-button{width:100%;padding:12px;background:#ff4da6;color:white;border:none;font-size:18px;border-radius:10px;margin-top:12px;}
-.history-item{background:#fff0fa;padding:10px;border-radius:8px;margin-top:8px;}
+body{
+  margin:0;
+  background:#f7f7f7;
+  font-family:Arial;
+}
+.header{
+  background:#ff4da6;
+  color:white;
+  text-align:center;
+  padding:15px;
+  font-size:20px;
+  font-weight:bold;
+}
+.box{
+  width:90%;
+  margin:auto;
+  margin-top:20px;
+  background:white;
+  border-radius:12px;
+  padding:15px;
+  box-shadow:0 0 6px rgba(0,0,0,0.1);
+}
+.balance{
+  font-size:26px;
+  font-weight:bold;
+  color:#ff4da6;
+}
+input{
+  width:100%;
+  padding:12px;
+  border:1px solid #ccc;
+  border-radius:10px;
+  margin-top:10px;
+}
+button{
+  width:100%;
+  padding:12px;
+  background:#ff4da6;
+  color:white;
+  border:none;
+  font-size:18px;
+  border-radius:10px;
+  margin-top:12px;
+}
+.history-item{
+  background:#fff0fa;
+  padding:10px;
+  border-radius:8px;
+  margin-top:8px;
+}
 </style>
 </head>
 <body>
@@ -20,8 +63,9 @@ button{width:100%;padding:12px;background:#ff4da6;color:white;border:none;font-s
 
 <div class="box">
   <div class="balance">Balance: ₹ <span id="balance">0</span></div>
+
   <input id="amount" type="number" placeholder="Enter Amount">
-  <button onclick="startPayment()">Add Money</button>
+  <button onclick="addMoney()">Add Money</button>
 </div>
 
 <div class="box">
@@ -29,6 +73,7 @@ button{width:100%;padding:12px;background:#ff4da6;color:white;border:none;font-s
   <div id="history"></div>
 </div>
 
+<!-- Razorpay JS -->
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
 <!-- Firebase -->
@@ -37,113 +82,112 @@ button{width:100%;padding:12px;background:#ff4da6;color:white;border:none;font-s
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
 <script>
-// =============== FIREBASE CONFIG ===============
+// 🔹 Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
   authDomain: "sathimere-415fa.firebaseapp.com",
+  databaseURL: "https://sathimere-415fa-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "sathimere-415fa",
   storageBucket: "sathimere-415fa.firebasestorage.app",
   messagingSenderId: "290492321074",
   appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// =============== SIGN IN ANONYMOUSLY ===============
+// 🔹 Backend URL
+const BACKEND_URL = "https://sathimere-backend.onrender.com";
+
+// Temporary/demo login
 auth.signInAnonymously();
 
-// =============== LOAD WALLET BALANCE ===============
-auth.onAuthStateChanged(() => {
-  let uid = auth.currentUser.uid;
-
+// Load balance & history
+auth.onAuthStateChanged(async () => {
+  const uid = auth.currentUser.uid;
   db.collection("wallet").doc(uid).onSnapshot(doc => {
-    document.getElementById("balance").innerText =
-      doc.exists ? doc.data().balance : 0;
+    if(doc.exists){
+      document.getElementById("balance").innerText = doc.data().balance || 0;
+    }
   });
-
   loadHistory();
 });
 
-// =============== START PAYMENT ===============
-async function startPayment(){
+// Add Money
+async function addMoney(){
   let amount = parseInt(document.getElementById("amount").value);
+  if(!amount || amount <= 0) return alert("Enter valid amount");
 
-  if(!amount || amount <= 0){
-    alert("Enter valid amount");
-    return;
+  try {
+    // 1️⃣ Create Razorpay order via backend
+    const orderRes = await fetch(BACKEND_URL + "/create-order", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ amount })
+    });
+    const orderData = await orderRes.json();
+
+    // 2️⃣ Open Razorpay
+    const rzp = new Razorpay({
+      key: orderData.key_id || orderData.key, // fallback
+      amount: orderData.amount,
+      currency: orderData.currency,
+      order_id: orderData.id,
+      name: "SathiMere Wallet",
+      description: "Add Money",
+      theme:{ color:"#ff4da6" },
+      handler: async function (response){
+        // 3️⃣ Verify payment via backend
+        const verifyRes = await fetch(BACKEND_URL + "/verify", {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify(response)
+        });
+        const verifyData = await verifyRes.json();
+
+        if(verifyData.success){
+          // 4️⃣ Update Firebase wallet + history
+          const uid = auth.currentUser.uid;
+          const ref = db.collection("wallet").doc(uid);
+          await db.runTransaction(async t => {
+            const doc = await t.get(ref);
+            const oldBalance = doc.exists ? doc.data().balance : 0;
+            t.set(ref, { balance: oldBalance + amount });
+          });
+          await db.collection("history").add({
+            uid: uid,
+            amount: amount,
+            type: "Add Money",
+            payment_id: response.razorpay_payment_id,
+            time: new Date()
+          });
+          alert("₹"+amount+" added successfully!");
+          loadHistory();
+        } else {
+          alert("Payment verification failed!");
+        }
+      }
+    });
+    rzp.open();
+
+  } catch (err) {
+    console.error(err);
+    alert("Payment failed. Try again!");
   }
-
-  let uid = auth.currentUser.uid;
-
-  // 1) CREATE ORDER on BACKEND
-  let order = await fetch("https://sathimere-backend.onrender.com/create-order", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({ amount: amount, uid: uid })
-  }).then(r => r.json());
-
-  if(!order.success){
-    alert("Backend error: " + order.error);
-    return;
-  }
-
-  // 2) RAZORPAY CHECKOUT
-  var options = {
-    "key": order.key, 
-    "amount": order.amount,
-    "currency": "INR",
-    "name": "SathiMere Wallet",
-    "order_id": order.id,
-    "handler": async function (response){
-        verifyPayment(response, amount, uid);
-    },
-    "theme": { "color": "#ff4da6" }
-  };
-
-  var rzp = new Razorpay(options);
-  rzp.open();
 }
 
-// =============== VERIFY PAYMENT THROUGH BACKEND ===============
-async function verifyPayment(res, amount, uid){
-
-  let verify = await fetch("https://sathimere-backend.onrender.com/verify", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      razorpay_payment_id: res.razorpay_payment_id,
-      razorpay_order_id: res.razorpay_order_id,
-      razorpay_signature: res.razorpay_signature,
-      amount: amount,
-      uid: uid
-    })
-  }).then(r=>r.json());
-
-  if(verify.success){
-    alert("₹"+amount+" added successfully!");
-    loadHistory();
-  } else {
-    alert("Payment verification failed!");
-  }
-}
-
-// =============== LOAD HISTORY ===============
+// Load history
 async function loadHistory(){
-  let uid = auth.currentUser.uid;
-
-  let snap = await db.collection("history")
+  const uid = auth.currentUser.uid;
+  const snap = await db.collection("history")
     .where("uid","==",uid)
     .orderBy("time","desc")
     .limit(20)
     .get();
-
-  let box = document.getElementById("history");
+  const box = document.getElementById("history");
   box.innerHTML = "";
-
   snap.forEach(d=>{
-    let x = d.data();
+    const x = d.data();
     box.innerHTML += `
       <div class="history-item">
         <b>₹${x.amount}</b> – ${x.type}<br>
@@ -155,4 +199,4 @@ async function loadHistory(){
 </script>
 
 </body>
-  </html>
+</html>
