@@ -1,120 +1,167 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Help & Support</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Help & Support</title>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="firebase.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-<style>
-body{font-family:Arial;background:#fff0f8;margin:0;padding:0;}
-
-.header{
-    background:#ff1493;
-    padding:15px;
-    color:white;
-    text-align:center;
-    font-size:22px;
-    font-weight:bold;
-}
-
-.container{
-    padding:20px;
-}
-
-.input{
-    width:100%;
-    padding:12px;
-    border:2px solid #ff1493;
-    border-radius:8px;
-    outline:none;
-    font-size:16px;
-    margin-bottom:15px;
-}
-
-.btn{
-    width:100%;
-    background:#ff1493;
-    color:white;
-    padding:12px;
-    border:none;
-    border-radius:8px;
-    font-size:18px;
-    cursor:pointer;
-}
-
-.card{
-    background:white;
-    padding:15px;
-    border-radius:10px;
-    margin-top:20px;
-    box-shadow:0 0 10px #ffc1dc;
-}
-</style>
-
+    <style>
+        body{
+            font-family: Arial;
+            background:#f9f9f9;
+            padding:15px;
+            margin:0;
+        }
+        h2{
+            text-align:center;
+            background:#ff1493;
+            padding:12px;
+            border-radius:10px;
+            color:white;
+        }
+        .input-box, textarea{
+            width:100%;
+            padding:12px;
+            margin-top:8px;
+            border-radius:8px;
+            border:1px solid #ccc;
+        }
+        button{
+            width:100%;
+            background:#ff1493;
+            padding:12px;
+            border:none;
+            color:white;
+            margin-top:10px;
+            border-radius:8px;
+            font-size:16px;
+            cursor:pointer;
+        }
+        .ticket{
+            background:white;
+            padding:15px;
+            margin-top:15px;
+            border-radius:10px;
+            box-shadow:0px 0px 5px rgba(0,0,0,0.1);
+        }
+        .status{
+            display:inline-block;
+            padding:4px 10px;
+            border-radius:6px;
+            font-size:12px;
+        }
+        .pending{ background:orange; color:white; }
+        .done{ background:green; color:white; }
+        .reply-box{
+            margin-top:10px;
+            padding:10px;
+            border-left:4px solid #ff1493;
+            background:#ffe6f2;
+            border-radius:8px;
+        }
+    </style>
 </head>
 <body>
 
-<div class="header">Help & Support</div>
+<h2>Help & Support</h2>
 
-<div class="container">
+<h3>Submit Your Query</h3>
 
-    <textarea id="msg" class="input" rows="5" placeholder="Explain your issue here..."></textarea>
+<input id="name" class="input-box" placeholder="Your Name">
+<input id="email" class="input-box" placeholder="Your Email">
+<textarea id="message" placeholder="Write your problem..."></textarea>
 
-    <button class="btn" onclick="sendHelp()">Submit Request</button>
+<button onclick="sendHelp()">Submit</button>
 
-    <div id="replyBox"></div>
-
-</div>
+<h3>Your Previous Queries</h3>
+<div id="myTickets"></div>
 
 <script>
-auth.onAuthStateChanged(async user=>{
-    if(!user) return window.location="login.html";
-    loadReply(user.uid);
-});
+    /* ---------------- FIREBASE CONNECT ---------------- */
+    const firebaseConfig = {
+        apiKey: "AIzaSyD2yY-xxxxxxxxxxxxxxxx",
+        authDomain: "sathimere-xxxx.firebaseapp.com",
+        projectId: "sathimere-xxxx",
+        storageBucket: "sathimere-xxxx.appspot.com",
+        messagingSenderId: "78xxxxxxx",
+        appId: "1:78xxxxxxxx:web:xxxxxxxxxx"
+    };
 
-async function sendHelp(){
-    let msg=document.getElementById("msg").value.trim();
-    if(msg===""){ alert("Please write your issue."); return; }
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    let user=auth.currentUser;
 
-    await db.collection("support").add({
-        uid: user.uid,
-        message: msg,
-        time: Date.now(),
-        status: "pending",
-        adminReply: ""
-    });
+    /* ---------------- SEND HELP REQUEST ---------------- */
+    function sendHelp() {
+        let name = document.getElementById("name").value.trim();
+        let email = document.getElementById("email").value.trim();
+        let message = document.getElementById("message").value.trim();
 
-    alert("Your request has been submitted. Support team will reply soon.");
-    document.getElementById("msg").value="";
-}
+        if(!name || !email || !message){
+            alert("Please fill all fields!");
+            return;
+        }
 
-function loadReply(uid){
-    db.collection("support")
-      .where("uid","==",uid)
-      .orderBy("time","desc")
-      .onSnapshot(snap=>{
-        let box=document.getElementById("replyBox");
-        box.innerHTML="";
-
-        snap.forEach(doc=>{
-            let d=doc.data();
-            box.innerHTML += `
-            <div class="card">
-                <b>Your Message:</b><br>${d.message}<br><br>
-                <b>Status:</b> ${d.status}<br><br>
-                <b>Admin Reply:</b><br>${d.adminReply || "No reply yet"}
-            </div>
-            `;
+        db.collection("helpRequests").add({
+            name,
+            email,
+            message,
+            reply: "",
+            status: "pending",
+            timestamp: new Date()
+        }).then(()=>{
+            alert("Message sent! Our team will reply soon.");
+            document.getElementById("message").value = "";
         });
-      });
-}
+    }
+
+
+    /* ---------------- LOAD USER TICKETS ---------------- */
+    function loadMyTickets(){
+        let email = localStorage.getItem("userEmail");
+
+        // If user has not typed email yet, wait until user types
+        document.getElementById("email").addEventListener("change", function(){
+            localStorage.setItem("userEmail", this.value);
+            loadMyTickets();
+        });
+
+        if(!email) return;
+
+        db.collection("helpRequests")
+        .where("email", "==", email)
+        .orderBy("timestamp", "desc")
+        .onSnapshot(res=>{
+            let html = "";
+            res.forEach(doc=>{
+                let t = doc.data();
+
+                html += `
+                    <div class="ticket">
+                        <b>Your Message:</b><br>${t.message}<br><br>
+
+                        <span class="status ${t.reply ? 'done':'pending'}">
+                            ${t.reply ? 'Replied' : 'Pending'}
+                        </span>
+
+                        ${t.reply ? `
+                          <div class="reply-box">
+                            <b>Admin Reply:</b><br>${t.reply}
+                          </div>
+                        ` : ""}
+                    </div>
+                `;
+            });
+
+            document.getElementById("myTickets").innerHTML = html;
+        });
+    }
+
+    loadMyTickets();
 </script>
 
 </body>
