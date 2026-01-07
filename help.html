@@ -1,78 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Help & Support</title>
+<title>User Help & Support</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #f5f7fa;
-        margin: 0;
-        padding: 20px;
-    }
-    .container {
-        max-width: 450px;
-        margin: auto;
-        background: white;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 0 10px #0002;
-    }
-    h2 { text-align: center; margin-bottom: 15px; }
-    input, textarea {
-        width: 100%;
-        padding: 12px;
-        margin-top: 10px;
-        border: 1px solid #ddd;
-        border-radius: 10px;
-    }
-    button {
-        width: 100%;
-        padding: 12px;
-        margin-top: 10px;
-        background: #005eff;
-        color: white;
-        border: none;
-        border-radius: 10px;
-        font-size: 16px;
-        cursor: pointer;
-    }
-    .reply-box {
-        margin-top: 20px;
-        background: #e9f3ff;
-        padding: 15px;
-        border-radius: 10px;
-        border-left: 4px solid #005eff;
-        display: none;
-    }
-</style>
+body {
+  font-family: Arial, sans-serif;
+  background: #ffe6f2;
+  margin: 0;
+  padding: 0;
+}
 
+.container {
+  width: 90%;
+  max-width: 450px;
+  background: white;
+  margin: 25px auto;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 0 10px #ff99cc;
+}
+
+h2 {
+  text-align: center;
+  color: #ff4da6;
+}
+
+input, textarea {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border: 2px solid #ff80bf;
+  border-radius: 10px;
+  background: #fff5fa;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background: #ff4da6;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  margin-top: 15px;
+  font-size: 18px;
+}
+
+.card {
+  margin-top: 20px;
+  padding: 15px;
+  background: #fff0f7;
+  border-left: 4px solid #ff4da6;
+  border-radius: 10px;
+}
+</style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Help & Support</h2>
+  <h2>Help & Support</h2>
 
-    <input type="text" id="subject" placeholder="Enter Subject">
-    <textarea id="message" rows="5" placeholder="Describe your issue..."></textarea>
-    
-    <button onclick="sendHelp()">Submit Request</button>
+  <input type="text" id="username" placeholder="Enter Your Name">
+  <textarea id="message" placeholder="Write your issue..." rows="4"></textarea>
 
-    <div id="replyBox" class="reply-box">
-        <h3>Admin Reply</h3>
-        <p id="replyText"></p>
-    </div>
+  <button onclick="sendRequest()">Submit Request</button>
+
+  <h3 style="color:#ff4da6;margin-top:25px;">Admin Reply</h3>
+  <div id="replyBox">No reply yet...</div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
 <script>
-/* ---------------- FIREBASE CONFIG ---------------- */
+// Your Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
   authDomain: "sathimere-415fa.firebaseapp.com",
@@ -84,54 +86,40 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth();
-/* ------------------------------------------------- */
+let db = firebase.database();
 
-// USER MUST BE LOGGED IN → FIREBASE UID USED AS TICKET ID
-auth.onAuthStateChanged(user => {
-    if (!user) {
-        alert("Please login first!");
-        return;
-    }
-    currentUser = user.uid;
-    loadReply();
+function sendRequest() {
+  let name = document.getElementById("username").value;
+  let msg = document.getElementById("message").value;
+
+  if (name === "" || msg === "") {
+    alert("Please fill all fields");
+    return;
+  }
+
+  let uniqueID = Date.now();
+
+  db.ref("HelpRequests/" + uniqueID).set({
+    username: name,
+    message: msg,
+    reply: "Waiting for admin..."
+  });
+
+  alert("Request submitted successfully!");
+
+  document.getElementById("message").value = "";
+}
+
+// Auto-load latest reply
+db.ref("HelpRequests").on("value", function(snapshot) {
+  let data = snapshot.val();
+  let latest = Object.keys(data || {}).pop();
+
+  if (!latest) return;
+
+  let reply = data[latest].reply;
+  document.getElementById("replyBox").innerHTML = "<div class='card'>" + reply + "</div>";
 });
-
-/* ---------------- SEND HELP REQUEST ---------------- */
-function sendHelp() {
-    const subject = document.getElementById("subject").value.trim();
-    const message = document.getElementById("message").value.trim();
-
-    if (!subject || !message) {
-        alert("Please fill all fields.");
-        return;
-    }
-
-    db.collection("helpRequests").doc(currentUser).set({
-        subject: subject,
-        message: message,
-        reply: "",
-        userId: currentUser,
-        timestamp: Date.now()
-    })
-    .then(() => {
-        alert("Request sent successfully!");
-    })
-    .catch(err => alert("Error: " + err.message));
-}
-
-/* ---------------- LIVE ADMIN REPLY LISTENER ---------------- */
-function loadReply() {
-    db.collection("helpRequests").doc(currentUser)
-    .onSnapshot(doc => {
-        if (doc.exists && doc.data().reply !== "") {
-            document.getElementById("replyText").innerText = doc.data().reply;
-            document.getElementById("replyBox").style.display = "block";
-        }
-    });
-}
-
 </script>
 
 </body>
