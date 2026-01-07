@@ -3,58 +3,14 @@
 <head>
 <title>Wallet – SathiMere</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <style>
-body{
-  margin:0;
-  background:#f7f7f7;
-  font-family:Arial;
-}
-.header{
-  background:#ff4da6;
-  color:white;
-  text-align:center;
-  padding:15px;
-  font-size:20px;
-  font-weight:bold;
-}
-.box{
-  width:90%;
-  margin:auto;
-  margin-top:20px;
-  background:white;
-  border-radius:12px;
-  padding:15px;
-  box-shadow:0 0 6px rgba(0,0,0,0.1);
-}
-.balance{
-  font-size:26px;
-  font-weight:bold;
-  color:#ff4da6;
-}
-input{
-  width:100%;
-  padding:12px;
-  border:1px solid #ccc;
-  border-radius:10px;
-  margin-top:10px;
-}
-button{
-  width:100%;
-  padding:12px;
-  background:#ff4da6;
-  color:white;
-  border:none;
-  font-size:18px;
-  border-radius:10px;
-  margin-top:12px;
-}
-.history-item{
-  background:#fff0fa;
-  padding:10px;
-  border-radius:8px;
-  margin-top:8px;
-}
+body{margin:0;background:#f7f7f7;font-family:Arial;}
+.header{background:#ff4da6;color:white;text-align:center;padding:15px;font-size:20px;font-weight:bold;}
+.box{width:90%;margin:auto;margin-top:20px;background:white;border-radius:12px;padding:15px;box-shadow:0 0 6px rgba(0,0,0,0.1);}
+.balance{font-size:26px;font-weight:bold;color:#ff4da6;}
+input{width:100%;padding:12px;border:1px solid #ccc;border-radius:10px;margin-top:10px;}
+button{width:100%;padding:12px;background:#ff4da6;color:white;border:none;font-size:18px;border-radius:10px;margin-top:12px;}
+.history-item{background:#fff0fa;padding:10px;border-radius:8px;margin-top:8px;}
 </style>
 </head>
 <body>
@@ -63,9 +19,7 @@ button{
 
 <div class="box">
   <div class="balance">Balance: ₹ <span id="balance">0</span></div>
-
   <input id="amount" type="number" placeholder="Enter Amount">
-
   <button onclick="addMoney()">Add Money</button>
 </div>
 
@@ -83,7 +37,7 @@ button{
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
 <script>
-// Firebase Config
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
   authDomain: "sathimere-415fa.firebaseapp.com",
@@ -92,124 +46,77 @@ const firebaseConfig = {
   messagingSenderId: "290492321074",
   appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
-
 auth.signInAnonymously();
 
-// Razorpay Key  
-const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
-
-// Backend URL
+// Backend URL (Render)
 const BACKEND_URL = "https://sathimere-backend.onrender.com";
 
-// Load wallet balance + history
-auth.onAuthStateChanged(() => {
-  let uid = auth.currentUser.uid;
-
-  db.collection("wallet").doc(uid).onSnapshot(doc => {
-    if(doc.exists){
-      document.getElementById("balance").innerText = doc.data().balance || 0;
-    }
+// Load wallet
+auth.onAuthStateChanged(async ()=>{
+  const uid = auth.currentUser.uid;
+  db.collection("wallet").doc(uid).onSnapshot(doc=>{
+    if(doc.exists) document.getElementById("balance").innerText = doc.data().balance || 0;
   });
-
   loadHistory();
 });
 
-// ADD MONEY
-function addMoney(){
-  let amount = document.getElementById("amount").value;
-  if(amount <= 0){
-    alert("Enter valid amount");
-    return;
-  }
+async function addMoney(){
+  let amount = parseInt(document.getElementById("amount").value);
+  if(!amount || amount<=0){ alert("Enter valid amount"); return; }
 
-  amount = parseInt(amount);
+  const uid = auth.currentUser.uid;
 
-  // 1) Create ORDER from backend
-  fetch(`${BACKEND_URL}/create-order?amount=${amount}`)
-    .then(res => res.json())
-    .then(order => {
+  // Create order from backend
+  const orderRes = await fetch(BACKEND_URL+"/create-order", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({amount, uid})
+  });
+  const orderData = await orderRes.json();
 
-      var options = {
-        "key": RAZORPAY_KEY,
-        "amount": order.amount, 
-        "currency": "INR",
-        "name": "SathiMere Wallet",
-        "description": "Add Money",
-        "order_id": order.id,     // VERY IMPORTANT
-        "handler": function (response){
-            paymentSuccess(amount, response.razorpay_payment_id, order.id);
-        },
-        "theme": {
-            "color": "#ff4da6"
-        }
-      };
+  var options = {
+    "key": "rzp_live_S0WmjPxxVh7JKJ",
+    "amount": orderData.amount,
+    "currency": "INR",
+    "name": "SathiMere Wallet",
+    "description": "Add Money",
+    "order_id": orderData.id,
+    "handler": async function(response){
+      // verify payment via backend
+      await fetch(BACKEND_URL+"/verify-payment", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          payment_id: response.razorpay_payment_id,
+          order_id: response.razorpay_order_id,
+          uid,
+          amount
+        })
+      });
+      alert("₹"+amount+" added successfully!");
+      loadHistory();
+    },
+    "theme":{"color":"#ff4da6"}
+  };
 
-      var rzp1 = new Razorpay(options);
-      rzp1.open();
-
-    })
-    .catch(err => {
-      alert("Backend error: " + err);
-    });
+  var rzp1 = new Razorpay(options);
+  rzp1.open();
 }
 
-// SUCCESS — Update Wallet + History
-async function paymentSuccess(amount, payment_id, order_id){
-  let uid = auth.currentUser.uid;
-
-  let ref = db.collection("wallet").doc(uid);
-
-  // Add amount safely
-  await db.runTransaction(async t => {
-    let doc = await t.get(ref);
-    let oldBalance = doc.exists ? doc.data().balance : 0;
-    let newBalance = oldBalance + amount;
-    t.set(ref, { balance: newBalance });
-  });
-
-  // Save history
-  await db.collection("history").add({
-    uid: uid,
-    amount: amount,
-    type: "Add Money",
-    payment_id: payment_id,
-    order_id: order_id,
-    time: new Date()
-  });
-
-  alert("₹"+amount+" added successfully!");
-  loadHistory();
-}
-
-// LOAD HISTORY
+// Load history
 async function loadHistory(){
-  let uid = auth.currentUser.uid;
-
-  let snap = await db.collection("history")
-    .where("uid", "==", uid)
-    .orderBy("time","desc")
-    .limit(20)
-    .get();
-
-  let box = document.getElementById("history");
+  const uid = auth.currentUser.uid;
+  const snap = await db.collection("history").where("uid","==",uid).orderBy("time","desc").limit(20).get();
+  const box = document.getElementById("history");
   box.innerHTML = "";
-
   snap.forEach(d=>{
-    let x = d.data();
-    box.innerHTML += `
-      <div class="history-item">
-        <b>₹${x.amount}</b> – ${x.type}<br>
-        <small>${x.time.toDate()}</small><br>
-        <small>Order: ${x.order_id}</small>
-      </div>
-    `;
+    const x = d.data();
+    box.innerHTML += `<div class="history-item"><b>₹${x.amount}</b> – ${x.type}<br><small>${x.time.toDate()}</small></div>`;
   });
 }
 </script>
-
 </body>
 </html>
