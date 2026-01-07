@@ -25,6 +25,20 @@ body{
   text-align:center;
   border-radius:10px;
   margin-bottom:15px;
+  position:relative;
+}
+
+.logout-btn{
+  position:absolute;
+  right:10px;
+  top:8px;
+  background:white;
+  color:#ff1493;
+  border:none;
+  padding:5px 10px;
+  border-radius:6px;
+  font-weight:bold;
+  cursor:pointer;
 }
 
 .search-box{
@@ -74,6 +88,18 @@ body{
   cursor:pointer;
 }
 
+.wallet-btn{
+  margin-bottom:15px;
+  width:100%;
+  padding:12px;
+  background:#ff1493;
+  color:white;
+  border:none;
+  border-radius:8px;
+  font-size:16px;
+  cursor:pointer;
+}
+
 .modal{
   position:fixed;
   top:0; left:0;
@@ -92,12 +118,18 @@ body{
   max-width:400px;
   border-radius:10px;
 }
+
 </style>
 
 </head>
 <body>
 
-<div class="topbar">Admin Panel</div>
+<div class="topbar">
+  Admin Panel
+  <button class="logout-btn" onclick="logout()">Logout</button>
+</div>
+
+<button class="wallet-btn" onclick="openWalletManager()">Wallet Manager</button>
 
 <input id="search" onkeyup="filterUsers()" class="search-box" placeholder="Search users...">
 
@@ -128,10 +160,16 @@ auth.onAuthStateChanged((user)=>{
 });
 
 
+/* ---------------- LOGOUT ---------------- */
+function logout(){
+  auth.signOut().then(()=> window.location="login.html");
+}
+
+
 /* ---------------- LOAD USERS ---------------- */
 function loadUsers(){
   db.collection("users")
-  .orderBy("name", "asc")
+  .orderBy("surname", "asc")
   .onSnapshot(res=>{
 
     let html = "";
@@ -141,12 +179,13 @@ function loadUsers(){
       html += `
         <div class="user-box">
           <div>
-            <b>${u.name || ""} ${u.surname || ""}</b><br>
+            <b>${u.surname || ""}</b><br>
             <small>${u.email || ""}</small>
           </div>
 
           <div>
             <button class="btn" onclick="viewProfile('${doc.id}')">View</button>
+            <button class="btn" onclick="openWallet('${doc.id}')">Wallet</button>
             <button class="btn" onclick="deleteUser('${doc.id}')">Delete</button>
           </div>
         </div>
@@ -166,7 +205,7 @@ async function viewProfile(uid){
   let u = d.data();
 
   document.getElementById("modalContent").innerHTML = `
-    <h3>${u.name || ""} ${u.surname || ""}</h3>
+    <h3>${u.surname || ""}</h3>
 
     <b>Photo:</b><br>
     <img src="${u.photo || ''}" style="width:90px;height:90px;border-radius:50%;border:2px solid #ff1493"><br><br>
@@ -227,6 +266,54 @@ function filterUsers(){
 /* ---------------- HELP SUPPORT ---------------- */
 function goHelp(){
   window.location = "help-admin.html";
+}
+
+
+/* ---------------- WALLET MANAGER BUTTON ---------------- */
+function openWalletManager(){
+  alert("Select any user → Click Wallet button to update balance.");
+}
+
+
+/* ---------------- OPEN WALLET UPDATE ---------------- */
+async function openWallet(uid){
+  let d = await db.collection("wallet").doc(uid).get();
+  let balance = 0;
+  if(d.exists) balance = d.data().balance;
+
+  document.getElementById("modalContent").innerHTML = `
+    <h3>Update Wallet</h3>
+    <b>Current Balance:</b> ₹${balance}<br><br>
+
+    <label>Add Amount</label>
+    <input type="number" id="addAmount" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;"><br><br>
+
+    <label>Remove Amount</label>
+    <input type="number" id="removeAmount" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;"><br><br>
+
+    <button class="btn" onclick="updateWallet('${uid}')">Update</button>
+    <button class="btn" onclick="closeModal()">Close</button>
+  `;
+
+  document.getElementById("modal").style.display="flex";
+}
+
+
+/* ---------------- UPDATE WALLET ---------------- */
+async function updateWallet(uid){
+  let add = Number(document.getElementById("addAmount").value) || 0;
+  let remove = Number(document.getElementById("removeAmount").value) || 0;
+
+  let doc = await db.collection("wallet").doc(uid).get();
+  let balance = doc.exists ? doc.data().balance : 0;
+
+  balance = balance + add - remove;
+  if(balance < 0) balance = 0;
+
+  await db.collection("wallet").doc(uid).set({ balance });
+
+  alert("Wallet Updated!");
+  closeModal();
 }
 
 </script>
