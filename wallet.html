@@ -68,13 +68,11 @@
   const BACKEND = "https://sathimere-backend.onrender.com";
   const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
 
-  /* ------------------------------------
-      YOUR EXACT FIREBASE DOCUMENT ID
-  ------------------------------------*/
-  const uid = "bSqaisFXaLQvM3OWnPXgnm6..."; // screenshot वाला UID
+  const uid = "user_001";
+
 
   /* ---------------------------------------------
-      FIREBASE CONFIG
+      FIREBASE CONFIG 
   ----------------------------------------------*/
   const firebaseConfig = {
     apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
@@ -89,9 +87,11 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
+
   /* ------------------------------------
-      FETCH CURRENT BALANCE
+      FETCH CURRENT BALANCE (From wallet/user_001)
   ------------------------------------*/
+
   async function loadBalance() {
     try {
       let doc = await db.collection("wallet").doc(uid).get();
@@ -105,9 +105,11 @@
 
   loadBalance();
 
+
   /* ------------------------------------
       ADD MONEY
   ------------------------------------*/
+
   async function addMoney() {
     let amount = Number(document.getElementById("amount").value);
 
@@ -160,18 +162,17 @@
 
           if (verify.status === "success") {
 
-            /* -------------------------------
-               EXACT Screenshot structure
-               wallet / UID / balance
-            --------------------------------*/
+            /* -----------------------------------------
+                ALWAYS save to → wallet/user_001
+            -----------------------------------------*/
             const ref = db.collection("wallet").doc(uid);
-            let docSnap = await ref.get();
+            let w = await ref.get();
 
-            if (!docSnap.exists) {
+            if (!w.exists) {
               await ref.set({ balance: amount });
             } else {
               await ref.update({
-                balance: (docSnap.data().balance || 0) + amount
+                balance: (w.data().balance || 0) + amount
               });
             }
 
