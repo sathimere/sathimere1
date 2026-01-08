@@ -48,44 +48,38 @@
 
   let uid;
 
-  // LOGIN USER ANONYMOUSLY & CREATE WALLET IF NOT EXISTS
-  auth.signInAnonymously().then(async () => {
+  // 🔥 Step 1 — User login (anonymous)
+  auth.signInAnonymously().then(() => {
     uid = auth.currentUser.uid;
-
-    const ref = db.collection("wallet").doc(uid);
-    const doc = await ref.get();
-
-    if (!doc.exists) {
-      await ref.set({ balance: 0 });   // NEW WALLET
-    }
-
     loadWallet();
   });
 
-  // LIVE BALANCE FETCH
+  // 🔥 Step 2 — Load Wallet balance REAL-TIME
   function loadWallet() {
-    db.collection("wallet")
-      .doc(uid)
-      .onSnapshot((d) => {
-        let bal = d.exists ? d.data().balance : 0;
-        document.getElementById("bal").innerText = "₹" + bal;
-      });
+    db.collection("wallet").doc(uid).onSnapshot(doc => {
+      if (doc.exists) {
+        document.getElementById("bal").innerText = "₹" + doc.data().balance;
+      } else {
+        document.getElementById("bal").innerText = "₹0";
+      }
+    });
   }
 
-  // START PAYMENT
+  // 🔥 Step 3 — Start Razorpay
   async function startPayment() {
     let amount = Number(document.getElementById("amount").value);
-    if (amount < 1)
-      return (document.getElementById("msg").innerText = "Minimum ₹1");
+    if (amount < 1) {
+      document.getElementById("msg").innerText = "Minimum ₹1";
+      return;
+    }
 
     document.getElementById("msg").innerText = "Creating order...";
 
-    // CREATE ORDER FROM BACKEND
     const order = await fetch(BACKEND + "/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount }),
-    }).then((r) => r.json());
+      body: JSON.stringify({ amount })
+    }).then(r => r.json());
 
     if (!order.id) {
       document.getElementById("msg").innerText = "Order failed.";
@@ -106,28 +100,32 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             payment_id: resp.razorpay_payment_id,
-            order_id: resp.razorpay_order_id,
-          }),
-        }).then((r) => r.json());
+            order_id: resp.razorpay_order_id
+          })
+        }).then(r => r.json());
 
         if (verify.status === "success") {
+
+          // 🔥 Step 4 — Update Wallet
           const ref = db.collection("wallet").doc(uid);
-          let w = await ref.get();
-          let bal = w.exists ? w.data().balance : 0;
+          await db.runTransaction(async (t) => {
+            let snap = await t.get(ref);
+            let bal = snap.exists ? snap.data().balance : 0;
+            t.set(ref, { balance: bal + amount });
+          });
 
-          await ref.update({ balance: bal + amount });
-
-          db.collection("history").add({
+          // 🔥 Step 5 — Add Transaction
+          await db.collection("history").add({
             uid: uid,
             amount: amount,
             type: "Add Money",
-            time: new Date(),
+            time: new Date()
           });
 
-          document.getElementById("msg").innerText = "";
           alert("Payment Successful!");
+          document.getElementById("msg").innerText = "";
         }
-      },
+      }
     };
 
     new Razorpay(options).open();
