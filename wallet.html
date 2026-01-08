@@ -7,23 +7,23 @@
   <style>
     body { font-family: Arial; padding:20px; }
     .box{
-      max-width:400px; 
-      margin:auto; 
-      padding:20px; 
-      border:1px solid #ddd; 
+      max-width:400px;
+      margin:auto;
+      padding:20px;
+      border:1px solid #ddd;
       border-radius:10px;
       box-shadow:0 0 10px rgba(0,0,0,0.1);
     }
     input,button{
-      width:100%; 
-      padding:10px; 
-      margin:10px 0; 
+      width:100%;
+      padding:10px;
+      margin:10px 0;
       font-size:16px;
       border-radius:5px;
     }
     button{
-      background:#4CAF50; 
-      color:#fff; 
+      background:#4CAF50;
+      color:#fff;
       border:none;
       cursor:pointer;
     }
@@ -42,7 +42,6 @@
   </style>
 
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
@@ -64,16 +63,13 @@
 </div>
 
 <script>
-
   const BACKEND = "https://sathimere-backend.onrender.com";
   const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
-
   const uid = "user_001";
 
-
   /* ---------------------------------------------
-      FIREBASE CONFIG 
-  ----------------------------------------------*/
+      FIREBASE CONFIG
+  ---------------------------------------------*/
   const firebaseConfig = {
     apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
     authDomain: "sathimere-415fa.firebaseapp.com",
@@ -87,32 +83,25 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
-
   /* ------------------------------------
-      FETCH CURRENT BALANCE (From wallet/user_001)
+      FETCH CURRENT BALANCE
   ------------------------------------*/
-
   async function loadBalance() {
     try {
       let doc = await db.collection("wallet").doc(uid).get();
       let bal = doc.exists ? doc.data().balance : 0;
-
       document.getElementById("balBox").innerText = "Balance: ₹" + bal;
     } catch (e) {
       console.log("Balance error:", e);
     }
   }
-
   loadBalance();
-
 
   /* ------------------------------------
       ADD MONEY
   ------------------------------------*/
-
   async function addMoney() {
     let amount = Number(document.getElementById("amount").value);
-
     if (!amount || amount < 10) {
       document.getElementById("msg").innerText = "Minimum ₹10 required.";
       return;
@@ -121,7 +110,6 @@
     document.getElementById("msg").innerText = "Creating order...";
 
     try {
-
       let orderRes = await fetch(`${BACKEND}/create-order`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -144,7 +132,6 @@
         "order_id": order.id,
 
         "handler": async function (response) {
-
           document.getElementById("msg").innerText = "Verifying payment...";
 
           let verifyRes = await fetch(`${BACKEND}/verify-payment`, {
@@ -161,28 +148,19 @@
           let verify = await verifyRes.json();
 
           if (verify.status === "success") {
-
-            /* -----------------------------------------
-                ALWAYS save to → wallet/user_001
-            -----------------------------------------*/
             const ref = db.collection("wallet").doc(uid);
             let w = await ref.get();
 
             if (!w.exists) {
               await ref.set({ balance: amount });
             } else {
-              await ref.update({
-                balance: (w.data().balance || 0) + amount
-              });
+              await ref.update({ balance: (w.data().balance || 0) + amount });
             }
 
             alert("Payment Successful! Wallet Updated.");
-
             document.getElementById("amount").value = "";
             document.getElementById("msg").innerText = "";
-
             loadBalance();
-
           } else {
             document.getElementById("msg").innerText = "Payment verification failed.";
           }
@@ -203,4 +181,4 @@
 </script>
 
 </body>
-</html>
+  </html>
