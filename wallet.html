@@ -10,10 +10,11 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <style>
-    body { font-family: Arial; padding:20px; }
-    .box { max-width:400px; margin:auto; padding:20px; border:1px solid #ccc; border-radius:10px; }
+    body { font-family: Arial; padding:20px; background:#f7f7f7; }
+    .box { max-width:400px; margin:auto; padding:20px; border:1px solid #ccc; border-radius:10px; background:#fff; }
     input,button { width:100%; padding:10px; margin-top:10px; font-size:16px; }
-    button { background:#0088ff; color:#fff; border:none; }
+    button { background:#0088ff; color:#fff; border:none; cursor:pointer; }
+    .history-item { background:#f0f8ff; padding:8px; border-radius:6px; margin-top:5px; }
   </style>
 </head>
 <body>
@@ -26,6 +27,11 @@
   <button onclick="startPayment()">Add Money</button>
 
   <p id="msg" style="color:red"></p>
+</div>
+
+<div class="box">
+  <h3>Transaction History</h3>
+  <div id="history"></div>
 </div>
 
 <script>
@@ -48,37 +54,29 @@
 
   let uid;
 
-  // 🔥 Step 1 — User login (anonymous)
   auth.signInAnonymously().then(() => {
     uid = auth.currentUser.uid;
-    loadWallet();
+    listenWallet();
+    loadHistory();
   });
 
-  // 🔥 Step 2 — Load Wallet balance REAL-TIME
-  function loadWallet() {
+  function listenWallet(){
     db.collection("wallet").doc(uid).onSnapshot(doc => {
-      if (doc.exists) {
-        document.getElementById("bal").innerText = "₹" + doc.data().balance;
-      } else {
-        document.getElementById("bal").innerText = "₹0";
-      }
+      let bal = doc.exists ? doc.data().balance : 0;
+      document.getElementById("bal").innerText = "₹" + bal;
     });
   }
 
-  // 🔥 Step 3 — Start Razorpay
   async function startPayment() {
     let amount = Number(document.getElementById("amount").value);
-    if (amount < 1) {
-      document.getElementById("msg").innerText = "Minimum ₹1";
-      return;
-    }
+    if (amount < 1) return document.getElementById("msg").innerText = "Minimum ₹1";
 
     document.getElementById("msg").innerText = "Creating order...";
 
     const order = await fetch(BACKEND + "/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount })
+      body: JSON.stringify({ amount, uid })
     }).then(r => r.json());
 
     if (!order.id) {
@@ -91,44 +89,65 @@
       amount: order.amount,
       currency: "INR",
       order_id: order.id,
-
-      handler: async function (resp) {
+      handler: async function(resp){
         document.getElementById("msg").innerText = "Verifying...";
 
-        let verify = await fetch(BACKEND + "/verify-payment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        const verify = await fetch(BACKEND + "/verify-payment", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
           body: JSON.stringify({
+            uid,
             payment_id: resp.razorpay_payment_id,
-            order_id: resp.razorpay_order_id
+            order_id: resp.razorpay_order_id,
+            amount
           })
-        }).then(r => r.json());
+        }).then(r=>r.json());
 
-        if (verify.status === "success") {
-
-          // 🔥 Step 4 — Update Wallet
+        if(verify.status==="success"){
           const ref = db.collection("wallet").doc(uid);
-          await db.runTransaction(async (t) => {
-            let snap = await t.get(ref);
-            let bal = snap.exists ? snap.data().balance : 0;
-            t.set(ref, { balance: bal + amount });
+          await db.runTransaction(async t=>{
+            let doc = await t.get(ref);
+            let old = doc.exists ? doc.data().balance : 0;
+            t.set(ref, { balance: old + amount });
           });
 
-          // 🔥 Step 5 — Add Transaction
           await db.collection("history").add({
-            uid: uid,
-            amount: amount,
-            type: "Add Money",
+            uid,
+            amount,
+            type:"Add Money",
             time: new Date()
           });
 
-          alert("Payment Successful!");
           document.getElementById("msg").innerText = "";
+          document.getElementById("amount").value = "";
+          loadHistory();
+          alert("Payment Successful!");
+        } else {
+          document.getElementById("msg").innerText = "Payment verification failed";
         }
       }
     };
 
     new Razorpay(options).open();
+  }
+
+  async function loadHistory(){
+    const snap = await db.collection("history")
+      .where("uid","==",uid)
+      .orderBy("time","desc")
+      .limit(20)
+      .get();
+
+    const box = document.getElementById("history");
+    box.innerHTML = "";
+
+    snap.forEach(d=>{
+      let x = d.data();
+      box.innerHTML += `<div class="history-item">
+        <b>₹${x.amount}</b> – ${x.type}<br>
+        <small>${x.time.toDate()}</small>
+      </div>`;
+    });
   }
 </script>
 
