@@ -46,22 +46,33 @@
   const db = firebase.firestore();
   const auth = firebase.auth();
 
-  let uid;
+  let uid = localStorage.getItem("my_uid");  // <-- FIX ADDED
 
-  auth.signInAnonymously().then(() => {
-    uid = auth.currentUser.uid;
+  if (uid) {
+    // Old user → load balance
     loadWallet();
-  });
+  } else {
+    // New user → create UID
+    auth.signInAnonymously().then(() => {
+      uid = auth.currentUser.uid;
+      localStorage.setItem("my_uid", uid);   // <-- FIX ADDED
+      loadWallet();
+    });
+  }
 
   function loadWallet() {
     db.collection("wallet").doc(uid).onSnapshot(d => {
-      document.getElementById("bal").innerText = "₹" + (d.exists ? d.data().balance : 0);
+      document.getElementById("bal").innerText =
+        "₹" + (d.exists ? d.data().balance : 0);
     });
   }
 
   async function startPayment() {
     let amount = Number(document.getElementById("amount").value);
-    if (amount < 1) return document.getElementById("msg").innerText = "Minimum ₹1";
+    if (amount < 1) {
+      document.getElementById("msg").innerText = "Minimum ₹1";
+      return;
+    }
 
     document.getElementById("msg").innerText = "Creating order...";
 
