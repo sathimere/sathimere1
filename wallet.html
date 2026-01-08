@@ -1,63 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Wallet – SathiMere</title>
+  <title>Wallet</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body { font-family: Arial; padding:20px; background:#f7f7f7; }
-    .box {
-      max-width:400px; margin:auto; padding:20px; 
-      border:1px solid #ddd; border-radius:10px;
-      box-shadow:0 0 10px rgba(0,0,0,0.1); background:white;
-      margin-bottom:20px;
-    }
-    #balBox {
-      background:#f1f1f1; padding:10px; margin-bottom:15px;
-      border-radius:5px; text-align:center; font-size:18px; font-weight:bold;
-    }
-    input,button {
-      width:100%; padding:10px; margin:10px 0; font-size:16px; border-radius:5px;
-    }
-    button {
-      background:#4CAF50; color:#fff; border:none; cursor:pointer;
-    }
-    button:hover { background:#45a049; }
-    .history-item {
-      background:#fff0fa; padding:10px; border-radius:8px; margin-top:8px;
-    }
-  </style>
 
-  <!-- Razorpay -->
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+  <style>
+    body { font-family: Arial; padding:20px; }
+    .box { max-width:400px; margin:auto; padding:20px; border:1px solid #ccc; border-radius:10px; }
+    input,button { width:100%; padding:10px; margin-top:10px; font-size:16px; }
+    button { background:#0088ff; color:#fff; border:none; }
+  </style>
 </head>
 <body>
 
 <div class="box">
-  <div id="balBox">Balance: ₹0</div>
-  <h2>Add Money to Wallet</h2>
-  <input type="number" id="amount" placeholder="Enter Amount (₹)" />
-  <button onclick="addMoney()">Add Money</button>
-  <p id="msg" style="color:red;"></p>
-</div>
+  <h3>Wallet Balance</h3>
+  <h2 id="bal">₹0</h2>
 
-<div class="box">
-  <h3>Transaction History</h3>
-  <div id="history"></div>
+  <input type="number" id="amount" placeholder="Enter amount">
+  <button onclick="startPayment()">Add Money</button>
+
+  <p id="msg" style="color:red"></p>
 </div>
 
 <script>
-  // -------------------------
-  // CONFIG
-  // -------------------------
-  const BACKEND = "https://sathimere-backend.onrender.com"; // Razorpay backend
+  const BACKEND = "https://sathimere-backend.onrender.com";
   const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
 
-  // Firebase client config
   const firebaseConfig = {
     apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
     authDomain: "sathimere-415fa.firebaseapp.com",
@@ -72,128 +46,74 @@
   const db = firebase.firestore();
   const auth = firebase.auth();
 
-  // -------------------------
-  // LOGIN ANONYMOUSLY & GET UID
-  // -------------------------
   let uid;
+
   auth.signInAnonymously().then(() => {
     uid = auth.currentUser.uid;
-    loadBalance();
-    loadHistory();
+    loadWallet();
   });
 
-  // -------------------------
-  // LOAD CURRENT BALANCE
-  // -------------------------
-  function loadBalance() {
-    if(!uid) return;
-    db.collection("wallet").doc(uid).onSnapshot(doc => {
-      let bal = doc.exists ? doc.data().balance : 0;
-      document.getElementById("balBox").innerText = "Balance: ₹" + bal;
+  function loadWallet() {
+    db.collection("wallet").doc(uid).onSnapshot(d => {
+      document.getElementById("bal").innerText = "₹" + (d.exists ? d.data().balance : 0);
     });
   }
 
-  // -------------------------
-  // ADD MONEY
-  // -------------------------
-  async function addMoney() {
-    if(!uid) return;
-
+  async function startPayment() {
     let amount = Number(document.getElementById("amount").value);
-    if(!amount || amount < 1) {
-      document.getElementById("msg").innerText = "Minimum ₹1 required.";
-      return;
-    }
+    if (amount < 1) return document.getElementById("msg").innerText = "Minimum ₹1";
 
     document.getElementById("msg").innerText = "Creating order...";
 
-    try {
-      // Create order on backend
-      let res = await fetch(`${BACKEND}/create-order`, {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ amount, uid })
-      });
-      let order = await res.json();
-      if(!order.id) { document.getElementById("msg").innerText = "Order creation failed."; return; }
+    const order = await fetch(BACKEND + "/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount })
+    }).then(r => r.json());
 
-      var options = {
-        key: RAZORPAY_KEY,
-        amount: order.amount,
-        currency:"INR",
-        name:"SathiMere Wallet",
-        description:"Add Money",
-        order_id: order.id,
-        handler: async function(response){
-          document.getElementById("msg").innerText = "Verifying payment...";
-          let verifyRes = await fetch(`${BACKEND}/verify-payment`, {
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({
-              uid,
-              amount,
-              order_id: response.razorpay_order_id,
-              payment_id: response.razorpay_payment_id
-            })
-          });
-          let verify = await verifyRes.json();
-          if(verify.status === "success"){
-            // UPDATE WALLET
-            const ref = db.collection("wallet").doc(uid);
-            let w = await ref.get();
-            if(!w.exists) await ref.set({ balance: amount });
-            else await ref.update({ balance: (w.data().balance || 0) + amount });
-
-            // ADD TO HISTORY
-            await db.collection("history").add({
-              uid: uid,
-              amount: amount,
-              type: "Add Money",
-              payment_id: response.razorpay_payment_id,
-              time: new Date()
-            });
-
-            alert("Payment Successful! Wallet Updated.");
-            document.getElementById("amount").value = "";
-            document.getElementById("msg").innerText = "";
-          } else {
-            document.getElementById("msg").innerText = "Payment verification failed.";
-          }
-        },
-        theme:{ color:"#4CAF50" }
-      };
-
-      var rzp = new Razorpay(options);
-      rzp.open();
-
-    } catch(e){
-      console.log(e);
-      document.getElementById("msg").innerText = "Something went wrong.";
+    if (!order.id) {
+      document.getElementById("msg").innerText = "Order failed.";
+      return;
     }
-  }
 
-  // -------------------------
-  // LOAD HISTORY
-  // -------------------------
-  async function loadHistory() {
-    if(!uid) return;
-    let snap = await db.collection("history")
-      .where("uid","==",uid)
-      .orderBy("time","desc")
-      .limit(20)
-      .get();
+    var options = {
+      key: RAZORPAY_KEY,
+      amount: order.amount,
+      currency: "INR",
+      order_id: order.id,
+      handler: async function (resp) {
+        document.getElementById("msg").innerText = "Verifying...";
 
-    let box = document.getElementById("history");
-    box.innerHTML = "";
-    snap.forEach(d => {
-      let x = d.data();
-      box.innerHTML += `
-        <div class="history-item">
-          <b>₹${x.amount}</b> – ${x.type}<br>
-          <small>${x.time.toDate()}</small>
-        </div>
-      `;
-    });
+        let verify = await fetch(BACKEND + "/verify-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payment_id: resp.razorpay_payment_id,
+            order_id: resp.razorpay_order_id
+          })
+        }).then(r => r.json());
+
+        if (verify.status === "success") {
+          const ref = db.collection("wallet").doc(uid);
+          let w = await ref.get();
+          let bal = w.exists ? w.data().balance : 0;
+
+          await ref.set({ balance: bal + amount });
+
+          db.collection("history").add({
+            uid: uid,
+            amount: amount,
+            type: "Add Money",
+            time: new Date()
+          });
+
+          document.getElementById("msg").innerText = "";
+          alert("Payment Successful!");
+        }
+      }
+    };
+
+    new Razorpay(options).open();
   }
 </script>
 
