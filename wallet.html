@@ -51,7 +51,6 @@
   </style>
 
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
 </head>
@@ -74,8 +73,8 @@
   const BACKEND = "https://sathimere-backend.onrender.com";
   const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
 
-  // Multiple users support
-  const uid = prompt("Enter your User ID") || "user_default";
+  // Prompt user for unique UID
+  const uid = prompt("Enter your unique User ID") || "user_" + Date.now();
 
   // Firebase Config
   const firebaseConfig = {
@@ -94,18 +93,18 @@
   // ---------------------------
   // LOAD BALANCE
   // ---------------------------
-  async function loadBalance() {
-    const ref = db.collection("wallet").doc(uid);
-    ref.onSnapshot(doc => {
-      const bal = doc.exists ? doc.data().balance : 0;
-      document.getElementById("balBox").innerText = "Balance: ₹" + bal;
-    });
+  function loadBalance() {
+    db.collection("wallet").doc(uid)
+      .onSnapshot(doc => {
+        const bal = doc.exists ? doc.data().balance : 0;
+        document.getElementById("balBox").innerText = "Balance: ₹" + bal;
+      });
   }
 
   // ---------------------------
   // LOAD HISTORY
   // ---------------------------
-  async function loadHistory() {
+  function loadHistory() {
     db.collection("history")
       .where("uid","==",uid)
       .orderBy("time","desc")
@@ -132,7 +131,6 @@
   // ---------------------------
   async function addMoney() {
     let amount = Number(document.getElementById("amount").value);
-
     if (!amount || amount < 1) {
       document.getElementById("msg").innerText = "Minimum ₹1 required.";
       return;
@@ -148,13 +146,12 @@
       });
 
       let order = await orderRes.json();
-
       if (!order.id) {
         document.getElementById("msg").innerText = "Order creation failed.";
         return;
       }
 
-      var options = {
+      const options = {
         key: RAZORPAY_KEY,
         amount: order.amount,
         currency: "INR",
@@ -176,7 +173,6 @@
           });
 
           let verify = await verifyRes.json();
-
           if (verify.status === "success") {
             const ref = db.collection("wallet").doc(uid);
             const w = await ref.get();
@@ -212,7 +208,6 @@
       document.getElementById("msg").innerText = "Something went wrong.";
     }
   }
-
 </script>
 </body>
   </html>
