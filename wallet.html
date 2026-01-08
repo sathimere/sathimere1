@@ -54,18 +54,14 @@
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-
 </head>
 <body>
 
 <div class="box">
-
   <div id="balBox">Balance: ₹0</div>
-
   <h2>Add Money to Wallet</h2>
   <input type="number" id="amount" placeholder="Enter Amount (₹)" />
   <button onclick="addMoney()">Add Money</button>
-
   <p id="msg" style="color:red;"></p>
 </div>
 
@@ -78,12 +74,10 @@
   const BACKEND = "https://sathimere-backend.onrender.com";
   const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
 
-  // Multiple users support → prompt for UID
+  // Multiple users support
   const uid = prompt("Enter your User ID") || "user_default";
 
-  /* ---------------------------------------------
-      FIREBASE CONFIG 
-  ---------------------------------------------*/
+  // Firebase Config
   const firebaseConfig = {
     apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
     authDomain: "sathimere-415fa.firebaseapp.com",
@@ -97,51 +91,45 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
-  /* ------------------------------------
-      FETCH CURRENT BALANCE
-  ------------------------------------*/
+  // ---------------------------
+  // LOAD BALANCE
+  // ---------------------------
   async function loadBalance() {
-    try {
-      let doc = await db.collection("wallet").doc(uid).get();
-      let bal = doc.exists ? doc.data().balance : 0;
+    const ref = db.collection("wallet").doc(uid);
+    ref.onSnapshot(doc => {
+      const bal = doc.exists ? doc.data().balance : 0;
       document.getElementById("balBox").innerText = "Balance: ₹" + bal;
-    } catch (e) {
-      console.log("Balance error:", e);
-    }
+    });
   }
 
-  /* ------------------------------------
-      LOAD TRANSACTION HISTORY
-  ------------------------------------*/
+  // ---------------------------
+  // LOAD HISTORY
+  // ---------------------------
   async function loadHistory() {
-    try {
-      let snap = await db.collection("history")
-        .where("uid","==",uid)
-        .orderBy("time","desc")
-        .limit(20)
-        .get();
-
-      let box = document.getElementById("history");
-      box.innerHTML = "";
-      snap.forEach(d=>{
-        let x = d.data();
-        let date = x.time.toDate();
-        box.innerHTML += `<div class="history-item">
-          ₹${x.amount} – ${x.type}<br>
-          <small>${date.toLocaleString()}</small>
-        </div>`;
+    db.collection("history")
+      .where("uid","==",uid)
+      .orderBy("time","desc")
+      .limit(20)
+      .onSnapshot(snapshot => {
+        const box = document.getElementById("history");
+        box.innerHTML = "";
+        snapshot.forEach(d => {
+          const x = d.data();
+          const date = x.time.toDate();
+          box.innerHTML += `<div class="history-item">
+            ₹${x.amount} – ${x.type}<br>
+            <small>${date.toLocaleString()}</small>
+          </div>`;
+        });
       });
-    } catch(e){
-      console.log("History error:", e);
-    }
   }
 
   loadBalance();
   loadHistory();
 
-  /* ------------------------------------
-      ADD MONEY
-  ------------------------------------*/
+  // ---------------------------
+  // ADD MONEY
+  // ---------------------------
   async function addMoney() {
     let amount = Number(document.getElementById("amount").value);
 
@@ -167,14 +155,13 @@
       }
 
       var options = {
-        "key": RAZORPAY_KEY,
-        "amount": order.amount,
-        "currency": "INR",
-        "name": "Wallet Recharge",
-        "description": "Add Money to Wallet",
-        "order_id": order.id,
-
-        "handler": async function (response) {
+        key: RAZORPAY_KEY,
+        amount: order.amount,
+        currency: "INR",
+        name: "Wallet Recharge",
+        description: "Add Money to Wallet",
+        order_id: order.id,
+        handler: async function(response) {
           document.getElementById("msg").innerText = "Verifying payment...";
 
           let verifyRes = await fetch(`${BACKEND}/verify-payment`, {
@@ -191,24 +178,14 @@
           let verify = await verifyRes.json();
 
           if (verify.status === "success") {
-
-            /* -----------------------------------------
-                SAVE TO WALLET
-            -----------------------------------------*/
             const ref = db.collection("wallet").doc(uid);
-            let w = await ref.get();
-
+            const w = await ref.get();
             if (!w.exists) {
               await ref.set({ balance: amount });
             } else {
-              await ref.update({
-                balance: (w.data().balance || 0) + amount
-              });
+              await ref.update({ balance: (w.data().balance || 0) + amount });
             }
 
-            /* -----------------------------------------
-                SAVE TRANSACTION HISTORY
-            -----------------------------------------*/
             await db.collection("history").add({
               uid: uid,
               amount: amount,
@@ -218,22 +195,16 @@
             });
 
             alert("Payment Successful! Wallet Updated.");
-
             document.getElementById("amount").value = "";
             document.getElementById("msg").innerText = "";
-
-            loadBalance();
-            loadHistory();
-
           } else {
             document.getElementById("msg").innerText = "Payment verification failed.";
           }
         },
-
-        "theme": { "color": "#3399cc" }
+        theme: { color: "#3399cc" }
       };
 
-      var rzp = new Razorpay(options);
+      const rzp = new Razorpay(options);
       rzp.open();
 
     } catch (e) {
@@ -243,6 +214,5 @@
   }
 
 </script>
-
 </body>
   </html>
