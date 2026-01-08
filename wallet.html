@@ -10,11 +10,10 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <style>
-    body { font-family: Arial; padding:20px; background:#f7f7f7; }
-    .box { max-width:400px; margin:auto; padding:20px; border:1px solid #ccc; border-radius:10px; background:#fff; }
+    body { font-family: Arial; padding:20px; }
+    .box { max-width:400px; margin:auto; padding:20px; border:1px solid #ccc; border-radius:10px; }
     input,button { width:100%; padding:10px; margin-top:10px; font-size:16px; }
-    button { background:#0088ff; color:#fff; border:none; cursor:pointer; }
-    .history-item { background:#f0f8ff; padding:8px; border-radius:6px; margin-top:5px; }
+    button { background:#0088ff; color:#fff; border:none; }
   </style>
 </head>
 <body>
@@ -27,11 +26,6 @@
   <button onclick="startPayment()">Add Money</button>
 
   <p id="msg" style="color:red"></p>
-</div>
-
-<div class="box">
-  <h3>Transaction History</h3>
-  <div id="history"></div>
 </div>
 
 <script>
@@ -56,14 +50,12 @@
 
   auth.signInAnonymously().then(() => {
     uid = auth.currentUser.uid;
-    listenWallet();
-    loadHistory();
+    loadWallet();
   });
 
-  function listenWallet(){
-    db.collection("wallet").doc(uid).onSnapshot(doc => {
-      let bal = doc.exists ? doc.data().balance : 0;
-      document.getElementById("bal").innerText = "₹" + bal;
+  function loadWallet() {
+    db.collection("wallet").doc(uid).onSnapshot(d => {
+      document.getElementById("bal").innerText = "₹" + (d.exists ? d.data().balance : 0);
     });
   }
 
@@ -76,7 +68,7 @@
     const order = await fetch(BACKEND + "/create-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount, uid })
+      body: JSON.stringify({ amount })
     }).then(r => r.json());
 
     if (!order.id) {
@@ -89,65 +81,39 @@
       amount: order.amount,
       currency: "INR",
       order_id: order.id,
-      handler: async function(resp){
+      handler: async function (resp) {
         document.getElementById("msg").innerText = "Verifying...";
 
-        const verify = await fetch(BACKEND + "/verify-payment", {
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
+        let verify = await fetch(BACKEND + "/verify-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            uid,
             payment_id: resp.razorpay_payment_id,
-            order_id: resp.razorpay_order_id,
-            amount
+            order_id: resp.razorpay_order_id
           })
-        }).then(r=>r.json());
+        }).then(r => r.json());
 
-        if(verify.status==="success"){
+        if (verify.status === "success") {
           const ref = db.collection("wallet").doc(uid);
-          await db.runTransaction(async t=>{
-            let doc = await t.get(ref);
-            let old = doc.exists ? doc.data().balance : 0;
-            t.set(ref, { balance: old + amount });
-          });
+          let w = await ref.get();
+          let bal = w.exists ? w.data().balance : 0;
 
-          await db.collection("history").add({
-            uid,
-            amount,
-            type:"Add Money",
+          await ref.set({ balance: bal + amount });
+
+          db.collection("history").add({
+            uid: uid,
+            amount: amount,
+            type: "Add Money",
             time: new Date()
           });
 
           document.getElementById("msg").innerText = "";
-          document.getElementById("amount").value = "";
-          loadHistory();
           alert("Payment Successful!");
-        } else {
-          document.getElementById("msg").innerText = "Payment verification failed";
         }
       }
     };
 
     new Razorpay(options).open();
-  }
-
-  async function loadHistory(){
-    const snap = await db.collection("history")
-      .where("uid","==",uid)
-      .orderBy("time","desc")
-      .limit(20)
-      .get();
-
-    const box = document.getElementById("history");
-    box.innerHTML = "";
-
-    snap.forEach(d=>{
-      let x = d.data();
-      box.innerHTML += `<div class="history-item">
-        <b>₹${x.amount}</b> – ${x.type}<br>
-        <small>${x.time.toDate()}</small>
-      </div>`;
-    });
   }
 </script>
 
