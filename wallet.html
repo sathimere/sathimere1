@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Wallet Recharge – Multi-User</title>
+  <title>Wallet Recharge – SathiMere</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <style>
-    body{font-family:Arial;padding:20px;}
-    .box{max-width:400px;margin:auto;padding:20px;border:1px solid #ddd;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.1);}
-    input,button{width:100%;padding:10px;margin:10px 0;font-size:16px;border-radius:5px;}
-    button{background:#4CAF50;color:#fff;border:none;cursor:pointer;}
-    button:hover{background:#45a049;}
-    #balBox{background:#f1f1f1;padding:10px;margin-bottom:15px;border-radius:5px;text-align:center;font-size:18px;font-weight:bold;}
-    .history-item{background:#f9f9f9;padding:8px;margin:5px 0;border-radius:5px;}
+    body{ font-family: Arial; padding:20px; background:#f7f7f7; }
+    .box{ max-width:400px; margin:auto; padding:20px; background:white; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.1);}
+    input, button{ width:100%; padding:12px; margin-top:10px; border-radius:8px; font-size:16px; }
+    button{ background:#4CAF50; color:white; border:none; cursor:pointer;}
+    button:hover{ background:#45a049; }
+    #balBox{ text-align:center; font-size:18px; font-weight:bold; margin-bottom:15px; }
+    .history-item{ background:#f1f1f1; padding:8px; margin-top:6px; border-radius:6px; }
   </style>
 
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
@@ -35,13 +36,13 @@
   const BACKEND = "https://sathimere-backend.onrender.com";
   const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
 
-  // Multi-user support → user enters their UID
+  // Custom UID prompt for multiple users
   const uid = prompt("Enter your User ID") || "user_default";
 
-  // Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
     authDomain: "sathimere-415fa.firebaseapp.com",
+    databaseURL: "https://sathimere-415fa-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "sathimere-415fa",
     storageBucket: "sathimere-415fa.firebasestorage.app",
     messagingSenderId: "290492321074",
@@ -51,33 +52,17 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
-  // Load balance
   async function loadBalance() {
-    let doc = await db.collection("wallet").doc(uid).get();
-    let bal = doc.exists ? doc.data().balance : 0;
-    document.getElementById("balBox").innerText = "Balance: ₹" + bal;
+    try{
+      let doc = await db.collection("wallet").doc(uid).get();
+      let bal = doc.exists ? doc.data().balance : 0;
+      document.getElementById("balBox").innerText = "Balance: ₹" + bal;
+    } catch(e){ console.log(e);}
+    loadHistory();
   }
   loadBalance();
 
-  // Load transaction history
-  async function loadHistory() {
-    let snap = await db.collection("history")
-      .where("uid","==",uid)
-      .orderBy("time","desc")
-      .limit(20)
-      .get();
-
-    let box = document.getElementById("history");
-    box.innerHTML = "";
-    snap.forEach(d=>{
-      let x = d.data();
-      box.innerHTML += `<div class="history-item">₹${x.amount} – ${x.type}<br><small>${x.time.toDate()}</small></div>`;
-    });
-  }
-  loadHistory();
-
-  // Add money
-  async function addMoney(){
+  async function addMoney() {
     let amount = Number(document.getElementById("amount").value);
     if(!amount || amount < 1){
       document.getElementById("msg").innerText = "Minimum ₹1 required.";
@@ -86,9 +71,9 @@
     document.getElementById("msg").innerText = "Creating order...";
 
     try{
-      let orderRes = await fetch(`${BACKEND}/create-order`,{
+      let orderRes = await fetch(`${BACKEND}/create-order`, {
         method:"POST",
-        headers:{"Content-Type":"application/json"},
+        headers: { "Content-Type":"application/json" },
         body: JSON.stringify({ amount, uid })
       });
       let order = await orderRes.json();
@@ -102,43 +87,61 @@
         amount: order.amount,
         currency: "INR",
         name: "Wallet Recharge",
-        description: "Add Money",
+        description: "Add Money to Wallet",
         order_id: order.id,
         handler: async function(response){
           document.getElementById("msg").innerText = "Verifying payment...";
-
-          let verifyRes = await fetch(`${BACKEND}/verify-payment`,{
+          let verifyRes = await fetch(`${BACKEND}/verify-payment`, {
             method:"POST",
             headers:{"Content-Type":"application/json"},
             body: JSON.stringify({
-              uid,
-              amount,
+              uid, amount,
               order_id: response.razorpay_order_id,
               payment_id: response.razorpay_payment_id
             })
           });
           let verify = await verifyRes.json();
           if(verify.status === "success"){
-            await loadBalance();
-            await loadHistory();
-            alert("Payment Successful!");
+            const ref = db.collection("wallet").doc(uid);
+            let w = await ref.get();
+            if(!w.exists){
+              await ref.set({ balance: amount });
+            } else {
+              await ref.update({ balance: (w.data().balance || 0) + amount });
+            }
+            await db.collection("history").add({
+              uid, amount, type:"Add Money", payment_id: response.razorpay_payment_id, time: new Date()
+            });
+            alert("Payment Successful! Wallet Updated.");
             document.getElementById("amount").value = "";
             document.getElementById("msg").innerText = "";
+            loadBalance();
           } else {
             document.getElementById("msg").innerText = "Payment verification failed.";
           }
         },
         theme:{ color:"#3399cc" }
       };
-
-      new Razorpay(options).open();
-
-    } catch(e){
-      console.log(e);
-      document.getElementById("msg").innerText = "Something went wrong.";
-    }
+      var rzp = new Razorpay(options);
+      rzp.open();
+    } catch(e){ console.log(e); document.getElementById("msg").innerText="Something went wrong."; }
   }
+
+  async function loadHistory(){
+    let snap = await db.collection("history")
+      .where("uid","==",uid)
+      .orderBy("time","desc")
+      .limit(20)
+      .get();
+    let box = document.getElementById("history");
+    box.innerHTML = "";
+    snap.forEach(d=>{
+      let x = d.data();
+      box.innerHTML += `<div class="history-item">₹${x.amount} – ${x.type}<br><small>${x.time.toDate()}</small></div>`;
+    });
+  }
+
 </script>
 
 </body>
-  </html>
+</html>
