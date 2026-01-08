@@ -68,10 +68,7 @@
   const BACKEND = "https://sathimere-backend.onrender.com";
   const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
 
-  /* ---------------------------------------------
-      USER FIREBASE DOC ID (YOUR REQUIRED PATH)
-  ----------------------------------------------*/
-  const uid = "bSqaisFXaLQvM3OWnPXgnm6";   // <-- यही आपकी Firebase document ID है
+  const uid = "user_001";
 
 
   /* ---------------------------------------------
@@ -92,7 +89,7 @@
 
 
   /* ------------------------------------
-      FETCH CURRENT BALANCE
+      FETCH CURRENT BALANCE (From wallet/user_001)
   ------------------------------------*/
 
   async function loadBalance() {
@@ -166,7 +163,7 @@
           if (verify.status === "success") {
 
             /* -----------------------------------------
-                SAVE TO wallet / bSqaisFXaLQvM3OWnPXgnm6
+                ALWAYS save to → wallet/user_001
             -----------------------------------------*/
             const ref = db.collection("wallet").doc(uid);
             let w = await ref.get();
