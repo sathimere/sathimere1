@@ -1,65 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Wallet Recharge</title>
+  <title>Wallet Recharge – Multi-User</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
   <style>
-    body { font-family: Arial; padding:20px; background:#f7f7f7; }
-    .box{
-      max-width:400px; 
-      margin:auto; 
-      padding:20px; 
-      border:1px solid #ddd; 
-      border-radius:10px;
-      box-shadow:0 0 10px rgba(0,0,0,0.1);
-      background:#fff;
-      margin-bottom:20px;
-    }
-    input,button{
-      width:100%; 
-      padding:10px; 
-      margin:10px 0; 
-      font-size:16px;
-      border-radius:5px;
-    }
-    button{
-      background:#4CAF50; 
-      color:#fff; 
-      border:none;
-      cursor:pointer;
-    }
-    button:hover{
-      background:#45a049;
-    }
-    #balBox{
-      background:#f1f1f1;
-      padding:10px;
-      margin-bottom:15px;
-      border-radius:5px;
-      text-align:center;
-      font-size:18px;
-      font-weight:bold;
-    }
-    .history-item{
-      background:#f0f0f0;
-      padding:10px;
-      border-radius:5px;
-      margin-top:8px;
-      font-size:14px;
-    }
+    body{font-family:Arial;padding:20px;}
+    .box{max-width:400px;margin:auto;padding:20px;border:1px solid #ddd;border-radius:10px;box-shadow:0 0 10px rgba(0,0,0,0.1);}
+    input,button{width:100%;padding:10px;margin:10px 0;font-size:16px;border-radius:5px;}
+    button{background:#4CAF50;color:#fff;border:none;cursor:pointer;}
+    button:hover{background:#45a049;}
+    #balBox{background:#f1f1f1;padding:10px;margin-bottom:15px;border-radius:5px;text-align:center;font-size:18px;font-weight:bold;}
+    .history-item{background:#f9f9f9;padding:8px;margin:5px 0;border-radius:5px;}
   </style>
 
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
 <div class="box">
   <div id="balBox">Balance: ₹0</div>
-  <h2>Add Money to Wallet</h2>
-  <input type="number" id="amount" placeholder="Enter Amount (₹)" />
+  <input type="number" id="amount" placeholder="Enter Amount (₹)">
   <button onclick="addMoney()">Add Money</button>
   <p id="msg" style="color:red;"></p>
 </div>
@@ -73,14 +35,13 @@
   const BACKEND = "https://sathimere-backend.onrender.com";
   const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
 
-  // Prompt user for unique UID
-  const uid = prompt("Enter your unique User ID") || "user_" + Date.now();
+  // Multi-user support → user enters their UID
+  const uid = prompt("Enter your User ID") || "user_default";
 
-  // Firebase Config
+  // Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
     authDomain: "sathimere-415fa.firebaseapp.com",
-    databaseURL: "https://sathimere-415fa-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "sathimere-415fa",
     storageBucket: "sathimere-415fa.firebasestorage.app",
     messagingSenderId: "290492321074",
@@ -90,80 +51,65 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
-  // ---------------------------
-  // LOAD BALANCE
-  // ---------------------------
-  function loadBalance() {
-    db.collection("wallet").doc(uid)
-      .onSnapshot(doc => {
-        const bal = doc.exists ? doc.data().balance : 0;
-        document.getElementById("balBox").innerText = "Balance: ₹" + bal;
-      });
+  // Load balance
+  async function loadBalance() {
+    let doc = await db.collection("wallet").doc(uid).get();
+    let bal = doc.exists ? doc.data().balance : 0;
+    document.getElementById("balBox").innerText = "Balance: ₹" + bal;
   }
+  loadBalance();
 
-  // ---------------------------
-  // LOAD HISTORY
-  // ---------------------------
-  function loadHistory() {
-    db.collection("history")
+  // Load transaction history
+  async function loadHistory() {
+    let snap = await db.collection("history")
       .where("uid","==",uid)
       .orderBy("time","desc")
       .limit(20)
-      .onSnapshot(snapshot => {
-        const box = document.getElementById("history");
-        box.innerHTML = "";
-        snapshot.forEach(d => {
-          const x = d.data();
-          const date = x.time.toDate();
-          box.innerHTML += `<div class="history-item">
-            ₹${x.amount} – ${x.type}<br>
-            <small>${date.toLocaleString()}</small>
-          </div>`;
-        });
-      });
-  }
+      .get();
 
-  loadBalance();
+    let box = document.getElementById("history");
+    box.innerHTML = "";
+    snap.forEach(d=>{
+      let x = d.data();
+      box.innerHTML += `<div class="history-item">₹${x.amount} – ${x.type}<br><small>${x.time.toDate()}</small></div>`;
+    });
+  }
   loadHistory();
 
-  // ---------------------------
-  // ADD MONEY
-  // ---------------------------
-  async function addMoney() {
+  // Add money
+  async function addMoney(){
     let amount = Number(document.getElementById("amount").value);
-    if (!amount || amount < 1) {
+    if(!amount || amount < 1){
       document.getElementById("msg").innerText = "Minimum ₹1 required.";
       return;
     }
-
     document.getElementById("msg").innerText = "Creating order...";
 
-    try {
-      let orderRes = await fetch(`${BACKEND}/create-order`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+    try{
+      let orderRes = await fetch(`${BACKEND}/create-order`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ amount, uid })
       });
-
       let order = await orderRes.json();
-      if (!order.id) {
+      if(!order.id){
         document.getElementById("msg").innerText = "Order creation failed.";
         return;
       }
 
-      const options = {
+      var options = {
         key: RAZORPAY_KEY,
         amount: order.amount,
         currency: "INR",
         name: "Wallet Recharge",
-        description: "Add Money to Wallet",
+        description: "Add Money",
         order_id: order.id,
-        handler: async function(response) {
+        handler: async function(response){
           document.getElementById("msg").innerText = "Verifying payment...";
 
-          let verifyRes = await fetch(`${BACKEND}/verify-payment`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+          let verifyRes = await fetch(`${BACKEND}/verify-payment`,{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
             body: JSON.stringify({
               uid,
               amount,
@@ -171,43 +117,28 @@
               payment_id: response.razorpay_payment_id
             })
           });
-
           let verify = await verifyRes.json();
-          if (verify.status === "success") {
-            const ref = db.collection("wallet").doc(uid);
-            const w = await ref.get();
-            if (!w.exists) {
-              await ref.set({ balance: amount });
-            } else {
-              await ref.update({ balance: (w.data().balance || 0) + amount });
-            }
-
-            await db.collection("history").add({
-              uid: uid,
-              amount: amount,
-              type: "Add Money",
-              payment_id: response.razorpay_payment_id,
-              time: new Date()
-            });
-
-            alert("Payment Successful! Wallet Updated.");
+          if(verify.status === "success"){
+            await loadBalance();
+            await loadHistory();
+            alert("Payment Successful!");
             document.getElementById("amount").value = "";
             document.getElementById("msg").innerText = "";
           } else {
             document.getElementById("msg").innerText = "Payment verification failed.";
           }
         },
-        theme: { color: "#3399cc" }
+        theme:{ color:"#3399cc" }
       };
 
-      const rzp = new Razorpay(options);
-      rzp.open();
+      new Razorpay(options).open();
 
-    } catch (e) {
-      console.log("ERROR:", e);
+    } catch(e){
+      console.log(e);
       document.getElementById("msg").innerText = "Something went wrong.";
     }
   }
 </script>
+
 </body>
   </html>
