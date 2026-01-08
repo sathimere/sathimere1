@@ -1,132 +1,116 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Wallet</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wallet</title>
 
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
-  <style>
-    body { font-family: Arial; padding:20px; }
-    .box { max-width:400px; margin:auto; padding:20px; border:1px solid #ccc; border-radius:10px; }
-    input,button { width:100%; padding:10px; margin-top:10px; font-size:16px; }
-    button { background:#0088ff; color:#fff; border:none; }
-  </style>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
 </head>
+
 <body>
 
-<div class="box">
-  <h3>Wallet Balance</h3>
-  <h2 id="bal">₹0</h2>
+<h2>Your Wallet</h2>
+<h1 id="balance">₹0</h1>
 
-  <input type="number" id="amount" placeholder="Enter amount">
-  <button onclick="startPayment()">Add Money</button>
+<input id="amount" type="number" placeholder="Enter Amount">
+<button onclick="addMoney()">Add Money</button>
 
-  <p id="msg" style="color:red"></p>
-</div>
+<p id="msg"></p>
 
 <script>
-  const BACKEND = "https://sathimere-backend.onrender.com";
-  const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
-    authDomain: "sathimere-415fa.firebaseapp.com",
-    databaseURL: "https://sathimere-415fa-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "sathimere-415fa",
-    storageBucket: "sathimere-415fa.firebasestorage.app",
-    messagingSenderId: "290492321074",
-    appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
+const BACKEND = "https://sathimere-backend.onrender.com";
+const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
+  authDomain: "sathimere-415fa.firebaseapp.com",
+  projectId: "sathimere-415fa",
+  storageBucket: "sathimere-415fa.firebasestorage.app",
+  messagingSenderId: "290492321074",
+  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let uid;
+
+// Load wallet after login
+auth.onAuthStateChanged(async (user) => {
+  if (!user) return window.location.href = "login.html";
+
+  uid = user.uid;
+
+  const ref = db.collection("wallets").doc(uid);
+
+  ref.onSnapshot(snap => {
+    if (snap.exists) {
+      document.getElementById("balance").innerText = "₹" + snap.data().balance;
+    }
+  });
+});
+
+async function addMoney() {
+  
+  let amount = Number(document.getElementById("amount").value);
+  if (amount < 1) return alert("Minimum ₹1");
+
+  document.getElementById("msg").innerText = "Creating order...";
+
+  // Create order
+  let order = await fetch(BACKEND + "/create-order", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount })
+  }).then(r => r.json());
+
+  if (!order.id) {
+    document.getElementById("msg").innerText = "Order failed";
+    return;
+  }
+
+  // Razorpay Checkout
+  var options = {
+    key: RAZORPAY_KEY,
+    amount: order.amount,
+    currency: "INR",
+    order_id: order.id,
+
+    handler: async (resp) => {
+      document.getElementById("msg").innerText = "Verifying...";
+
+      let verify = await fetch(BACKEND + "/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payment_id: resp.razorpay_payment_id,
+          order_id: resp.razorpay_order_id
+        })
+      }).then(r => r.json());
+
+      if (verify.status === "success") {
+        
+        const ref = db.collection("wallets").doc(uid);
+        let doc = await ref.get();
+        let old = doc.data().balance;
+
+        await ref.update({ balance: old + amount });
+
+        document.getElementById("msg").innerText = "";
+        alert("Money Added!");
+      }
+    }
   };
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const auth = firebase.auth();
+  new Razorpay(options).open();
+}
 
-  let uid = localStorage.getItem("my_uid");  // <-- FIX ADDED
-
-  if (uid) {
-    // Old user → load balance
-    loadWallet();
-  } else {
-    // New user → create UID
-    auth.signInAnonymously().then(() => {
-      uid = auth.currentUser.uid;
-      localStorage.setItem("my_uid", uid);   // <-- FIX ADDED
-      loadWallet();
-    });
-  }
-
-  function loadWallet() {
-    db.collection("wallet").doc(uid).onSnapshot(d => {
-      document.getElementById("bal").innerText =
-        "₹" + (d.exists ? d.data().balance : 0);
-    });
-  }
-
-  async function startPayment() {
-    let amount = Number(document.getElementById("amount").value);
-    if (amount < 1) {
-      document.getElementById("msg").innerText = "Minimum ₹1";
-      return;
-    }
-
-    document.getElementById("msg").innerText = "Creating order...";
-
-    const order = await fetch(BACKEND + "/create-order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount })
-    }).then(r => r.json());
-
-    if (!order.id) {
-      document.getElementById("msg").innerText = "Order failed.";
-      return;
-    }
-
-    var options = {
-      key: RAZORPAY_KEY,
-      amount: order.amount,
-      currency: "INR",
-      order_id: order.id,
-      handler: async function (resp) {
-        document.getElementById("msg").innerText = "Verifying...";
-
-        let verify = await fetch(BACKEND + "/verify-payment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            payment_id: resp.razorpay_payment_id,
-            order_id: resp.razorpay_order_id
-          })
-        }).then(r => r.json());
-
-        if (verify.status === "success") {
-          const ref = db.collection("wallet").doc(uid);
-          let w = await ref.get();
-          let bal = w.exists ? w.data().balance : 0;
-
-          await ref.set({ balance: bal + amount });
-
-          db.collection("history").add({
-            uid: uid,
-            amount: amount,
-            type: "Add Money",
-            time: new Date()
-          });
-
-          document.getElementById("msg").innerText = "";
-          alert("Payment Successful!");
-        }
-      }
-    };
-
-    new Razorpay(options).open();
-  }
 </script>
-
 </body>
 </html>
