@@ -68,12 +68,10 @@
   const BACKEND = "https://sathimere-backend.onrender.com";
   const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
 
-  const uid = "user_001";
+  /*  👉 TERA EXACT UID  */
+  const uid = "bSqaisFXaLQvM3OWnPXgnm6...";
 
-
-  /* ---------------------------------------------
-      FIREBASE CONFIG 
-  ----------------------------------------------*/
+  /* FIREBASE CONFIG */
   const firebaseConfig = {
     apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
     authDomain: "sathimere-415fa.firebaseapp.com",
@@ -88,10 +86,7 @@
   const db = firebase.firestore();
 
 
-  /* ------------------------------------
-      FETCH CURRENT BALANCE (From wallet/user_001)
-  ------------------------------------*/
-
+  /* LOAD BALANCE */
   async function loadBalance() {
     try {
       let doc = await db.collection("wallet").doc(uid).get();
@@ -106,10 +101,7 @@
   loadBalance();
 
 
-  /* ------------------------------------
-      ADD MONEY
-  ------------------------------------*/
-
+  /* ADD MONEY */
   async function addMoney() {
     let amount = Number(document.getElementById("amount").value);
 
@@ -162,9 +154,7 @@
 
           if (verify.status === "success") {
 
-            /* -----------------------------------------
-                ALWAYS save to → wallet/user_001
-            -----------------------------------------*/
+            /* SAVE IN SAME LOCATION */
             const ref = db.collection("wallet").doc(uid);
             let w = await ref.get();
 
