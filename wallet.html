@@ -24,8 +24,10 @@
       }
   </style>
 
+  <!-- Razorpay -->
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
@@ -44,14 +46,17 @@
 
 <script type="module">
 
+// ------------------------------
+// Firebase Setup
+// ------------------------------
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// -------------------- Firebase ----------------------
 const firebaseConfig = {
   apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
   authDomain: "sathimere-415fa.firebaseapp.com",
+  databaseURL: "https://sathimere-415fa-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "sathimere-415fa",
   storageBucket: "sathimere-415fa.firebasestorage.app",
   messagingSenderId: "290492321074",
@@ -64,7 +69,9 @@ const auth = getAuth(app);
 
 let CURRENT_UID = null;
 
-// --------------------- Auth + Load Wallet ---------------------
+// ------------------------------
+// LOGIN CHECK + FETCH WALLET
+// ------------------------------
 onAuthStateChanged(auth, async (user) => {
     if (!user) {
         alert("Login required");
@@ -75,17 +82,24 @@ onAuthStateChanged(auth, async (user) => {
     CURRENT_UID = user.uid;
 
     const walletRef = doc(db, "wallets", CURRENT_UID);
+
     const snap = await getDoc(walletRef);
 
+    // If first time — create wallet
     if (!snap.exists()) {
-        await setDoc(walletRef, { balance: 0, createdAt: Date.now() });
+        await setDoc(walletRef, {
+            balance: 0,
+            createdAt: Date.now()
+        });
         document.getElementById("walletAmount").innerText = "0";
     } else {
         document.getElementById("walletAmount").innerText = snap.data().balance;
     }
 });
 
-// ----------------------- Payment -----------------------
+// ------------------------------
+// RAZORPAY PAYMENT
+// ------------------------------
 window.startPayment = async function () {
 
     let amount = prompt("Enter amount to add:");
@@ -97,14 +111,15 @@ window.startPayment = async function () {
     amount = parseInt(amount);
 
     const options = {
-        key: "rzp_live_S0WmjPxxVh7JKJ",
+        key: "rzp_live_S0WmjPxxVh7JKJ", // your live key
         amount: amount * 100,
         currency: "INR",
         name: "SathiMere Wallet",
+        description: "Add Money",
         handler: async function (response) {
 
-            // ---- BACKEND CALL (Non-blocking) ----
-            fetch("https://sathimere-backend.onrender.com/wallet/update", {
+            // On success → Call backend to verify payment + update wallet
+            let res = await fetch("https://sathimere-backend.onrender.com/wallet/update", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -112,12 +127,15 @@ window.startPayment = async function () {
                     amount: amount,
                     paymentId: response.razorpay_payment_id
                 })
-            }).catch(() => {}); // Ignore backend errors also
+            });
 
-            // ---- GUARANTEED WALLET UPDATE ----
-            await updateWallet(amount);
+            let result = await res.json();
 
-            alert("Payment Successful!");
+            if (result.success) {
+                updateLocalWallet(amount);
+            } else {
+                alert("Payment verification failed!");
+            }
         },
         theme: { color: "#3399cc" }
     };
@@ -126,22 +144,22 @@ window.startPayment = async function () {
     rzp.open();
 };
 
-// ----------------------- SAFE FIREBASE UPDATE -----------------------
-async function updateWallet(amount) {
-
+// ------------------------------
+// Update Wallet Locally After Backend Confirms
+// ------------------------------
+async function updateLocalWallet(amount) {
     const walletRef = doc(db, "wallets", CURRENT_UID);
+
     const snap = await getDoc(walletRef);
-
-    let currentBal = 0;
-    if (snap.exists()) currentBal = snap.data().balance;
-
-    const newBal = currentBal + amount;
+    let currentBal = snap.data().balance || 0;
 
     await updateDoc(walletRef, {
-        balance: newBal
+        balance: currentBal + amount
     });
 
-    document.getElementById("walletAmount").innerText = newBal;
+    document.getElementById("walletAmount").innerText = currentBal + amount;
+
+    alert("Wallet Updated Successfully!");
 }
 
 </script>
