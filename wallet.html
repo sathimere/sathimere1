@@ -65,7 +65,9 @@
 <script>
   const BACKEND = "https://sathimere-backend.onrender.com";
   const RAZORPAY_KEY = "rzp_live_S0WmjPxxVh7JKJ";
-  const uid = "user_001";
+
+  // UID for each user (replace with login UID if available)
+  const uid = prompt("Enter your User ID") || "user_default";
 
   /* ---------------------------------------------
       FIREBASE CONFIG
@@ -102,8 +104,8 @@
   ------------------------------------*/
   async function addMoney() {
     let amount = Number(document.getElementById("amount").value);
-    if (!amount || amount < 10) {
-      document.getElementById("msg").innerText = "Minimum ₹10 required.";
+    if (!amount || amount < 1) {  // Minimum ₹1 now
+      document.getElementById("msg").innerText = "Minimum ₹1 required.";
       return;
     }
 
