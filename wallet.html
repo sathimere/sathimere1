@@ -46,11 +46,10 @@
 
 <script type="module">
 
-// ------------------------------
-// Firebase Setup
-// ------------------------------
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { 
+    getFirestore, doc, setDoc, getDoc, updateDoc, increment 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -82,10 +81,8 @@ onAuthStateChanged(auth, async (user) => {
     CURRENT_UID = user.uid;
 
     const walletRef = doc(db, "wallets", CURRENT_UID);
-
     const snap = await getDoc(walletRef);
 
-    // If first time — create wallet
     if (!snap.exists()) {
         await setDoc(walletRef, {
             balance: 0,
@@ -111,14 +108,13 @@ window.startPayment = async function () {
     amount = parseInt(amount);
 
     const options = {
-        key: "rzp_live_S0WmjPxxVh7JKJ", // your live key
+        key: "rzp_live_S0WmjPxxVh7JKJ",
         amount: amount * 100,
         currency: "INR",
         name: "SathiMere Wallet",
         description: "Add Money",
         handler: async function (response) {
 
-            // On success → Call backend to verify payment + update wallet
             let res = await fetch("https://sathimere-backend.onrender.com/wallet/update", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -132,7 +128,7 @@ window.startPayment = async function () {
             let result = await res.json();
 
             if (result.success) {
-                updateLocalWallet(amount);
+                await updateLocalWallet(amount);
             } else {
                 alert("Payment verification failed!");
             }
@@ -145,19 +141,19 @@ window.startPayment = async function () {
 };
 
 // ------------------------------
-// Update Wallet Locally After Backend Confirms
+// Update Wallet Locally (FIXED)
 // ------------------------------
 async function updateLocalWallet(amount) {
     const walletRef = doc(db, "wallets", CURRENT_UID);
 
-    const snap = await getDoc(walletRef);
-    let currentBal = snap.data().balance || 0;
-
+    // Atomic increment (no need to fetch old value)
     await updateDoc(walletRef, {
-        balance: currentBal + amount
+        balance: increment(amount)
     });
 
-    document.getElementById("walletAmount").innerText = currentBal + amount;
+    // Fetch latest value
+    const snap = await getDoc(walletRef);
+    document.getElementById("walletAmount").innerText = snap.data().balance;
 
     alert("Wallet Updated Successfully!");
 }
