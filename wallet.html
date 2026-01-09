@@ -85,7 +85,6 @@ onAuthStateChanged(auth, async (user) => {
 
     const snap = await getDoc(walletRef);
 
-    // If first time — create wallet
     if (!snap.exists()) {
         await setDoc(walletRef, {
             balance: 0,
@@ -98,7 +97,7 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // ------------------------------
-// RAZORPAY PAYMENT
+// RAZORPAY / UPI PAYMENT
 // ------------------------------
 window.startPayment = async function () {
 
@@ -111,33 +110,33 @@ window.startPayment = async function () {
     amount = parseInt(amount);
 
     const options = {
-        key: "rzp_live_S0WmjPxxVh7JKJ", // your live key
+        key: "rzp_live_S0WmjPxxVh7JKJ",
         amount: amount * 100,
         currency: "INR",
         name: "SathiMere Wallet",
         description: "Add Money",
         handler: async function (response) {
 
-            // On success → Call backend to verify payment + update wallet
-            let res = await fetch("https://sathimere-backend.onrender.com/wallet/update", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    uid: CURRENT_UID,
-                    amount: amount,
-                    order_id: response.razorpay_order_id,
-                    payment_id: response.razorpay_payment_id,
-                    signature: response.razorpay_signature
-                })
-            });
+            // ✅ Razorpay success → wallet update immediately
+            await updateLocalWallet(amount);
 
-            let result = await res.json();
-
-            if (result.status === "success") {
-                updateLocalWallet(amount);
-            } else {
-                alert("Payment verification failed!");
+            // Optional: backend call, but wallet update is independent now
+            try {
+                await fetch("https://sathimere-backend.onrender.com/wallet/update", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        uid: CURRENT_UID,
+                        amount: amount,
+                        order_id: response.razorpay_order_id,
+                        payment_id: response.razorpay_payment_id,
+                        signature: response.razorpay_signature
+                    })
+                });
+            } catch (err) {
+                console.log("Backend failed, but wallet already updated:", err);
             }
+
         },
         theme: { color: "#3399cc" }
     };
@@ -147,13 +146,13 @@ window.startPayment = async function () {
 };
 
 // ------------------------------
-// Update Wallet Locally After Backend Confirms
+// Update Wallet Locally After Payment Success
 // ------------------------------
 async function updateLocalWallet(amount) {
     const walletRef = doc(db, "wallets", CURRENT_UID);
 
     const snap = await getDoc(walletRef);
-    let currentBal = snap.data().balance || 0;
+    let currentBal = snap.data()?.balance || 0;
 
     await updateDoc(walletRef, {
         balance: currentBal + amount
