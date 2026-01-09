@@ -1,23 +1,58 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Wallet</title>
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <title>Wallet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+      body { font-family: Arial; padding: 20px; }
+      .box {
+          padding: 20px;
+          border-radius: 10px;
+          background: #f3f3f3;
+          text-align: center;
+          margin-bottom: 20px;
+      }
+      button {
+          width: 100%;
+          padding: 15px;
+          background: #007bff;
+          border: none;
+          color: white;
+          border-radius: 8px;
+          font-size: 18px;
+      }
+  </style>
+
+  <!-- Razorpay -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+
 </head>
 
 <body>
-    <h2>Your Balance: ₹<span id="balance">0</span></h2>
-    <input id="amount" placeholder="Enter Amount" />
-    <button onclick="addMoney()">Add Money</button>
 
-<script>
-//--------------------------------------------
-// FIREBASE CONFIG
-//--------------------------------------------
+<h2>Your Wallet</h2>
+
+<div class="box">
+    <h3>Balance: ₹ <span id="walletAmount">0</span></h3>
+</div>
+
+<button onclick="startPayment()">Add Money</button>
+
+<script type="module">
+
+// ------------------------------
+// Firebase Setup
+// ------------------------------
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
   authDomain: "sathimere-415fa.firebaseapp.com",
@@ -27,86 +62,107 @@ const firebaseConfig = {
   messagingSenderId: "290492321074",
   appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
 };
-firebase.initializeApp(firebaseConfig);
 
-// TEMP USER UID
-let uid = localStorage.getItem("uid");
-if (!uid) {
-    uid = "user" + Date.now();
-    localStorage.setItem("uid", uid);
-}
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-//--------------------------------------------
-// WALLET REFERENCE
-//--------------------------------------------
-const walletRef = firebase.database().ref("wallets/" + uid);
+let CURRENT_UID = null;
 
-// CHECK IF WALLET EXISTS
-walletRef.once("value", snap => {
+// ------------------------------
+// LOGIN CHECK + FETCH WALLET
+// ------------------------------
+onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+        alert("Login required");
+        window.location.href = "login.html";
+        return;
+    }
+
+    CURRENT_UID = user.uid;
+
+    const walletRef = doc(db, "wallets", CURRENT_UID);
+
+    const snap = await getDoc(walletRef);
+
+    // If first time — create wallet
     if (!snap.exists()) {
-        walletRef.set({
+        await setDoc(walletRef, {
             balance: 0,
-            lastUpdate: Date.now()
+            createdAt: Date.now()
         });
+        document.getElementById("walletAmount").innerText = "0";
+    } else {
+        document.getElementById("walletAmount").innerText = snap.data().balance;
     }
 });
 
-// REALTIME BALANCE UPDATE
-walletRef.on("value", snap => {
-    const data = snap.val();
-    if (data && data.balance != null) {
-        document.getElementById("balance").innerText = data.balance;
+// ------------------------------
+// RAZORPAY PAYMENT
+// ------------------------------
+window.startPayment = async function () {
+
+    let amount = prompt("Enter amount to add:");
+    if (!amount || isNaN(amount) || amount <= 0) {
+        alert("Invalid amount");
+        return;
     }
-});
 
-//--------------------------------------------
-// ADD MONEY FUNCTION
-//--------------------------------------------
-async function addMoney() {
-    const amount = Number(document.getElementById("amount").value);
-    if (!amount || amount <= 0) return alert("Enter valid amount");
+    amount = parseInt(amount);
 
-    // 1️⃣ CREATE ORDER ON SERVER
-    const order = await fetch("https://sathimere-backend.onrender.com/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, uid })
-    }).then(res => res.json());
-
-    // 2️⃣ OPEN RAZORPAY CHECKOUT
     const options = {
-        key: "rzp_live_S0WmjPxxVh7JKJ", // Razorpay live key
-        amount: order.amount,
+        key: "rzp_live_S0WmjPxxVh7JKJ", // your live key
+        amount: amount * 100,
         currency: "INR",
         name: "SathiMere Wallet",
-        order_id: order.id,
-        handler: async function(response) {
+        description: "Add Money",
+        handler: async function (response) {
 
-            // 3️⃣ VERIFY PAYMENT ON SERVER
-            const verify = await fetch("https://sathimere-backend.onrender.com/verify-payment", {
+            // On success → Call backend to verify payment + update wallet
+            let res = await fetch("https://sathimere-backend.onrender.com/wallet/update", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    order_id: order.id,
-                    payment_id: response.razorpay_payment_id,
-                    signature: response.razorpay_signature,
-                    uid,
-                    amount
+                    uid: CURRENT_UID,
+                    amount: amount,
+                    paymentId: response.razorpay_payment_id
                 })
-            }).then(res => res.json());
+            });
 
-            if (verify.status === "success") {
-                alert("Payment Successful! Wallet Updated.");
-                // Firebase realtime listener automatically updates balance
+            let result = await res.json();
+
+            if (result.success) {
+                updateLocalWallet(amount);
             } else {
                 alert("Payment verification failed!");
             }
-        }
+        },
+        theme: { color: "#3399cc" }
     };
 
     const rzp = new Razorpay(options);
     rzp.open();
+};
+
+// ------------------------------
+// Update Wallet Locally After Backend Confirms
+// ------------------------------
+async function updateLocalWallet(amount) {
+    const walletRef = doc(db, "wallets", CURRENT_UID);
+
+    const snap = await getDoc(walletRef);
+    let currentBal = snap.data().balance || 0;
+
+    await updateDoc(walletRef, {
+        balance: currentBal + amount
+    });
+
+    document.getElementById("walletAmount").innerText = currentBal + amount;
+
+    alert("Wallet Updated Successfully!");
 }
+
 </script>
+
 </body>
 </html>
