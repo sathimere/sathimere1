@@ -97,17 +97,8 @@ body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
     border-top-right-radius: 10px;
 }
 
-.nav-item { 
-    text-align: center; 
-    color: gold; 
-    font-weight: bold; 
-}
-
-.nav-item span { 
-    font-size: 26px; 
-    display: block; 
-    color: gold; 
-}
+.nav-item { text-align: center; color: gold; font-weight: bold; }
+.nav-item span { font-size: 26px; display: block; color: gold; }
 </style>
 </head>
 <body>
@@ -120,7 +111,6 @@ Sathi Mere
 
 <input id="searchInput" class="search-box" placeholder="Search by name..." onkeyup="searchUser()">
 
-<!-- 📌 UPDATED MENU WITH TWO NEW PAGES -->
 <div id="menu">
 <span class="close-menu" onclick="closeMenu()">✖</span>
 
@@ -131,12 +121,8 @@ Sathi Mere
 <a href="referral.html">Referral</a>
 <a href="help.html">Help & Support</a>
 <a href="privacy.html">Privacy Policy</a>
-
-<!-- ⭐ NEW ADDED BUTTONS ⭐ -->
 <a href="social.html">Social Media</a>
 <a href="about.html">About</a>
-<!-- ⭐ END NEW BUTTONS ⭐ -->
-
 <a onclick="logout()">Logout</a>
 </div>
 
@@ -212,6 +198,7 @@ function renderUsers(users, myId) {
     });
 }
 
+/* ===== LIKE SYSTEM ===== */
 async function toggleLike(uid,name,photo){
     let myId = auth.currentUser.uid;
     let btn = document.getElementById("like_" + uid);
@@ -250,6 +237,7 @@ function viewProfile(uid){
     window.location="view-profile.html?id="+uid;
 }
 
+/* ===== STATUS CHECK ===== */
 async function checkStatus(myId,otherId){
     let btn=document.getElementById("btn_"+otherId);
     let doc=await db.collection("chatRequests").doc(myId+"_"+otherId).get();
@@ -268,11 +256,14 @@ async function checkStatus(myId,otherId){
     }
 }
 
-/* ===== REQUEST SEND LOGIC ===== */
+/* =============================
+   CHAT REQUEST SYSTEM (FIXED)
+   ============================= */
 async function sendRequest(myId,toId,otherGender){
     let me = await db.collection("users").doc(myId).get();
     let myGender = me.data().gender;
 
+    // Female = Free
     if(myGender==="Female"){
         await db.collection("chatRequests").doc(myId+"_"+toId).set({
             from: myId,
@@ -286,15 +277,18 @@ async function sendRequest(myId,toId,otherGender){
         return;
     }
 
-    let wallet = await db.collection("wallet").doc(myId).get();
+    // Male = Deduct 10
+    let wallet = await db.collection("wallets").doc(myId).get();
     let balance = wallet.exists ? wallet.data().balance : 0;
 
-    if(balance<10){
+    if(balance < 10){
         alert("Insufficient balance! Please add money.");
         return;
     }
 
-    await db.collection("wallet").doc(myId).update({balance: balance-10});
+    await db.collection("wallets").doc(myId).update({
+        balance: balance - 10
+    });
 
     await db.collection("chatRequests").doc(myId+"_"+toId).set({
         from: myId,
@@ -315,10 +309,11 @@ async function sendRequest(myId,toId,otherGender){
     checkStatus(myId,toId);
 }
 
+/* LOGOUT */
 function logout(){
     auth.signOut().then(()=>{window.location="login.html"});
 }
 </script>
 
 </body>
-    </html>
+</html>
