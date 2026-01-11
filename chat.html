@@ -37,7 +37,6 @@ async function loadChatRequests(){
     const container = document.getElementById("requestList");
     container.innerHTML = "Loading...";
 
-    // Incoming Pending Requests
     const incomingSnap = await db.collection("chatRequests")
         .where("to","==",CURRENT.uid)
         .where("status","==","pending").get();
@@ -56,7 +55,6 @@ async function loadChatRequests(){
         }
     }
 
-    // Accepted Requests (Incoming + Sent)
     const acceptedSnap = await db.collection("chatRequests")
         .where("status","==","accepted")
         .get();
@@ -84,7 +82,6 @@ async function loadChatRequests(){
     if(container.innerHTML==="Loading...") container.innerHTML="No requests or chats.";
 }
 
-// Card creator
 async function createCard(userId, requestId, isPending){
     const userDoc = await db.collection("users").doc(userId).get();
     const u = userDoc.data();
@@ -121,7 +118,6 @@ async function createCard(userId, requestId, isPending){
     return card;
 }
 
-// Accept Request → wallet logic + redirect
 async function acceptRequest(requestId, fromGender, fromId){
     const req = await db.collection("chatRequests").doc(requestId).get();
     if(!req.exists) return;
@@ -130,33 +126,39 @@ async function acceptRequest(requestId, fromGender, fromId){
     let paidBy = req.data().paidBy || "Male";
 
     if(paidBy==="Male" && fromGender==="Female"){
-        let wallet = await db.collection("wallet").doc(myId).get();
+        let wallet = await db.collection("wallets").doc(myId).get();
         let balance = wallet.exists ? wallet.data().balance : 0;
+
         if(balance >= 10){
-            await db.collection("wallet").doc(myId).update({balance: balance - 10});
+            await db.collection("wallets").doc(myId).update({balance: balance - 10});
             await db.collection("history").add({uid: myId, amount:-10, type:"Chat Request Accepted", time:new Date()});
-        } else { alert("Insufficient balance!"); return; }
+        } else { 
+            alert("Insufficient balance!"); 
+            return; 
+        }
     }
 
     await db.collection("chatRequests").doc(requestId).update({status:"accepted"});
 
     const chatID = myId < fromId ? myId+"_"+fromId : fromId+"_"+myId;
-    await db.collection("chats").doc(chatID).set({users:[myId, fromId], lastMsg:"", time:Date.now()});
+    await db.collection("chats").doc(chatID).set({
+        users:[myId, fromId],
+        lastMsg:"", 
+        time:Date.now()
+    });
 
     location.href = "chat-room.html?id="+chatID;
 }
 
-// Reject request → remove card
 async function rejectRequest(requestId, cardElem){
     await db.collection("chatRequests").doc(requestId).update({status:"rejected"});
     cardElem.remove();
 }
 
-// Open chat
 function openChat(uid1, uid2){
     const chatID = uid1<uid2 ? uid1+"_"+uid2 : uid2+"_"+uid1;
     location.href = "chat-room.html?id="+chatID;
 }
 </script>
 </body>
-</html>
+    </html>
