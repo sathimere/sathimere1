@@ -72,7 +72,7 @@ async function loadProfile(myId){
         <button id="chatBtn" class="btn">Chat Request</button>
     `;
 
-    // Like logic
+    // Like check
     const likeSnap = await db.collection("likes")
         .where("from", "==", myId)
         .where("to", "==", profileId)
@@ -119,8 +119,8 @@ async function loadProfile(myId){
         const me = await db.collection("users").doc(myId).get();
         const myGender = me.data().gender;
 
+        // FEMALE → FREE
         if(myGender === "Female"){
-            // Female request → free
             await db.collection("chatRequests").doc(chatDocId).set({
                 from: myId,
                 to: profileId,
@@ -135,8 +135,8 @@ async function loadProfile(myId){
             return;
         }
 
-        // Male request → deduct ₹10
-        let wallet = await db.collection("wallet").doc(myId).get();
+        // MALE → deduct ₹10 from wallets
+        let wallet = await db.collection("wallets").doc(myId).get();
         let balance = wallet.exists ? wallet.data().balance : 0;
 
         if(balance < 10){
@@ -144,7 +144,9 @@ async function loadProfile(myId){
             return;
         }
 
-        await db.collection("wallet").doc(myId).update({balance: balance-10});
+        await db.collection("wallets").doc(myId).update({
+            balance: balance - 10
+        });
 
         await db.collection("chatRequests").doc(chatDocId).set({
             from: myId,
