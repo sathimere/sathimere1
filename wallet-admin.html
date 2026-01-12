@@ -15,6 +15,7 @@ body{
   font-family: Arial;
   background:#ffe4f0;
   padding:15px;
+  margin:0;
 }
 
 .topbar{
@@ -40,6 +41,41 @@ body{
   cursor:pointer;
 }
 
+.search{
+  width:100%;
+  padding:12px;
+  border-radius:8px;
+  border:1px solid #ccc;
+  margin-bottom:10px;
+}
+
+.list{
+  background:white;
+  padding:10px;
+  border-radius:10px;
+  height:350px;
+  overflow-y:auto;
+  box-shadow:0 0 10px #ff9ac7;
+}
+
+.user-row{
+  padding:10px;
+  border-bottom:1px solid #eee;
+  cursor:pointer;
+}
+
+.user-row:hover{
+  background:#ffe4f0;
+}
+
+.box{
+  background:white;
+  padding:15px;
+  border-radius:10px;
+  box-shadow:0 0 10px #ff9ac7;
+  margin-top:15px;
+}
+
 .input{
   width:100%;
   padding:12px;
@@ -56,16 +92,16 @@ body{
   border:none;
   border-radius:8px;
   cursor:pointer;
-  font-size:16px;
   margin-top:10px;
+  font-size:16px;
 }
 
-.box{
-  background:white;
-  padding:15px;
-  border-radius:10px;
-  box-shadow:0 0 10px #ff9ac7;
-  margin-top:15px;
+.btn-green{
+  background:#00b33c;
+}
+
+.btn-red{
+  background:#ff0033;
 }
 </style>
 
@@ -77,68 +113,114 @@ body{
   <button class="back-btn" onclick="goBack()">Back</button>
 </div>
 
-<input id="uid" class="input" placeholder="Enter User UID">
+<input id="search" class="search" placeholder="Search user by name/email..." oninput="filterUsers()">
 
-<button class="btn" onclick="loadWallet()">Load User Wallet</button>
+<div id="userList" class="list">
+  Loading users...
+</div>
 
 <div id="walletBox" class="box" style="display:none;">
   <h3>User Wallet</h3>
   <b>Name:</b> <span id="w_name"></span><br>
   <b>Email:</b> <span id="w_email"></span><br>
+  <b>UID:</b> <span id="w_uid"></span><br>
   <b>Current Wallet:</b> ₹<span id="w_balance">0</span><br><br>
 
   <input id="amount" class="input" placeholder="Enter Amount">
 
-  <button class="btn" style="background:#00b33c" onclick="addMoney()">Add Money</button>
-  <button class="btn" style="background:#ff0033" onclick="deductMoney()">Deduct Money</button>
+  <button class="btn btn-green" onclick="addMoney()">Add Money</button>
+  <button class="btn btn-red" onclick="deductMoney()">Deduct Money</button>
 </div>
 
 <script>
 
-/* ---------------- BACK BUTTON ---------------- */
 function goBack(){
-  window.location = "admin.html";
+  window.location="admin.html";
 }
 
-/* ---------------- LOAD WALLET ---------------- */
-async function loadWallet(){
-  let id = uid.value.trim();
-  if(id === "") return alert("Enter UID!");
+let allUsers = [];
+let selectedUID = "";
 
-  let d = await db.collection("users").doc(id).get();
+/* ---------------- LOAD ALL USERS ---------------- */
+async function loadUsers(){
+  const div = document.getElementById("userList");
+  div.innerHTML = "Loading...";
 
-  if(!d.exists){
-    alert("User not found!");
-    return;
+  const snap = await db.collection("users").get();
+
+  allUsers = [];
+  snap.forEach(d=>{
+    let u = d.data();
+    allUsers.push({
+      uid: d.id,
+      name: u.name || "",
+      email: u.email || ""
+    });
+  });
+
+  renderUsers(allUsers);
+}
+
+function renderUsers(list){
+  const div = document.getElementById("userList");
+  div.innerHTML = "";
+
+  list.forEach(u=>{
+    let row = document.createElement("div");
+    row.className = "user-row";
+    row.innerHTML = `<b>${u.name}</b><br><small>${u.email}</small>`;
+    row.onclick = ()=> openWallet(u.uid);
+    div.appendChild(row);
+  });
+
+  if(list.length === 0){
+    div.innerHTML = "<p style='text-align:center;color:gray;'>No users found</p>";
   }
+}
 
-  let u = d.data();
+function filterUsers(){
+  let text = search.value.toLowerCase();
 
-  document.getElementById("w_name").innerText = (u.name || "") + " " + (u.surname || "");
+  let filtered = allUsers.filter(u =>
+    (u.name || "").toLowerCase().includes(text) ||
+    (u.email || "").toLowerCase().includes(text)
+  );
+
+  renderUsers(filtered);
+}
+
+/* ---------------- OPEN WALLET ---------------- */
+async function openWallet(uid){
+  selectedUID = uid;
+
+  const userDoc = await db.collection("users").doc(uid).get();
+  const walletDoc = await db.collection("wallets").doc(uid).get();
+
+  let u = userDoc.data();
+  let balance = walletDoc.exists ? walletDoc.data().balance : 0;
+
+  document.getElementById("w_name").innerText = u.name || "";
   document.getElementById("w_email").innerText = u.email || "";
-  document.getElementById("w_balance").innerText = u.wallet || 0;
+  document.getElementById("w_uid").innerText = uid;
+  document.getElementById("w_balance").innerText = balance;
 
   document.getElementById("walletBox").style.display = "block";
 }
 
 /* ---------------- ADD MONEY ---------------- */
 async function addMoney(){
-  let id = uid.value.trim();
   let amt = Number(amount.value);
-
   if(isNaN(amt) || amt <= 0){
     alert("Enter valid amount");
     return;
   }
 
-  let doc = await db.collection("users").doc(id).get();
-  let current = doc.data().wallet || 0;
+  let walletDoc = await db.collection("wallets").doc(selectedUID).get();
+  let current = walletDoc.exists ? walletDoc.data().balance : 0;
 
   let newBal = current + amt;
 
-  await db.collection("users").doc(id).update({
-    wallet: newBal
-  });
+  await db.collection("wallets").doc(selectedUID).set({balance:newBal},{merge:true});
 
   alert("₹"+amt+" added!");
   document.getElementById("w_balance").innerText = newBal;
@@ -146,33 +228,32 @@ async function addMoney(){
 
 /* ---------------- DEDUCT MONEY ---------------- */
 async function deductMoney(){
-  let id = uid.value.trim();
   let amt = Number(amount.value);
-
   if(isNaN(amt) || amt <= 0){
     alert("Enter valid amount");
     return;
   }
 
-  let doc = await db.collection("users").doc(id).get();
-  let current = doc.data().wallet || 0;
+  let walletDoc = await db.collection("wallets").doc(selectedUID).get();
+  let current = walletDoc.exists ? walletDoc.data().balance : 0;
 
   if(amt > current){
-    alert("Insufficient balance!");
+    alert("Insufficient balance");
     return;
   }
 
   let newBal = current - amt;
 
-  await db.collection("users").doc(id).update({
-    wallet: newBal
-  });
+  await db.collection("wallets").doc(selectedUID).set({balance:newBal},{merge:true});
 
   alert("₹"+amt+" deducted!");
   document.getElementById("w_balance").innerText = newBal;
 }
 
+/* Load users on start */
+loadUsers();
+
 </script>
 
 </body>
-</html>
+  </html>
