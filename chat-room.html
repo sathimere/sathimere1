@@ -26,11 +26,11 @@ const db = firebase.firestore();
 
 <style>
 body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
-.topbar { height:55px; background:#ff1493; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; width:100%; z-index:10; font-size:18px; font-weight:bold;}
-.topbar span:first-child { position:absolute; left:15px; cursor:pointer; font-size:24px;}
-#userName { font-size:14px; position:absolute; bottom:4px; width:100%; text-align:center; }
-#statusBar { font-size:12px; font-weight:normal; position:absolute; bottom:0; left:0; right:0; text-align:center; }
-.chat-container { padding:70px 10px 100px; max-width:600px; margin:auto; display:flex; flex-direction:column; gap:10px;}
+.topbar { height:70px; background:#ff1493; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; position:fixed; top:0; width:100%; z-index:10; font-size:18px; font-weight:bold; padding-top:5px;}
+.topbar span:first-child { position:absolute; left:15px; cursor:pointer; font-size:24px; top:20px;}
+#userName { font-size:16px; font-weight:bold; margin-bottom:3px; text-align:center; }
+#statusBar { font-size:12px; font-weight:normal; color:#eee; text-align:center; }
+.chat-container { padding:80px 10px 100px; max-width:600px; margin:auto; display:flex; flex-direction:column; gap:10px;}
 .msg { padding:10px 15px; border-radius:15px; max-width:80%; word-wrap:break-word; position:relative;}
 .sender { background:#ff1493; color:#fff; align-self:flex-end; border-bottom-right-radius:0;}
 .receiver { background:#fff; color:#333; align-self:flex-start; border-bottom-left-radius:0;}
@@ -40,7 +40,7 @@ body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
 .input-container input { flex:1; padding:10px; border-radius:20px; border:1px solid #ccc; outline:none;}
 .input-container button { background:#ff1493; color:#fff; border:none; border-radius:20px; padding:10px 15px; cursor:pointer; font-weight:bold;}
 .typing-indicator { font-size:14px; color:#666; margin-left:10px; display:none;}
-#blockBtn { position:absolute; top:8px; right:15px; background:#fff; color:#ff1493; border:none; border-radius:50%; cursor:pointer; width:35px; height:35px; font-size:20px; display:flex; align-items:center; justify-content:center;}
+#blockBtn { position:absolute; top:20px; right:15px; background:#fff; color:#ff1493; border:none; border-radius:50%; cursor:pointer; width:35px; height:35px; font-size:20px; display:flex; align-items:center; justify-content:center;}
 </style>
 </head>
 
@@ -98,7 +98,9 @@ auth.onAuthStateChanged(async user=>{
     } 
   });
 
+  // Set current user online
   db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:true,lastSeen:Date.now()});
+
   loadStatus();
   loadMessages();
   listenTyping();
@@ -110,7 +112,13 @@ function loadStatus(){
   db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{ 
     const d=doc.data(); 
     if(!d) return; 
-    statusBar.innerText=d[OTHER_ID+"_online"]?"Online":"Last seen: "+new Date(d.lastSeen||0).toLocaleTimeString(); 
+    // Online only if real-time online flag is true
+    if(d[OTHER_ID+"_online"]){ 
+      statusBar.innerText = "Online"; 
+    } else { 
+      const last = d.lastSeen?new Date(d.lastSeen).toLocaleTimeString():"Unknown"; 
+      statusBar.innerText = "Last seen: "+last; 
+    }
   });
 }
 
@@ -199,4 +207,4 @@ function sendNotification(msg){
 </script>
 
 </body>
-</html>
+  </html>
