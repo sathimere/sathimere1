@@ -1,14 +1,36 @@
 <!DOCTYPE html>
 <html>
-<border-bottom-right-radius>
+<head>
 <title>Sathi Mere - Chat Room</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="htfirebasejsgstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="firebase.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
+
+<!-- Firebase Config -->
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
+  authDomain: "sathimere-415fa.firebaseapp.com",
+  databaseURL: "https://sathimere-415fa-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "sathimere-415fa",
+  storageBucket: "sathimere-415fa.firebasestorage.app",
+  messagingSenderId: "290492321074",
+  appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+const messaging = firebase.messaging();
+</script>
+
 <style>
-body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
+body { margin:0; font-family:Arial; background:#f2f2f2; }
 .topbar { height:55px; background:#ff1493; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; width:100%; z-index:10; font-size:20px; }
 .topbar span:first-child { position:absolute; left:15px; cursor:pointer; font-size:22px; }
 .topbar button { position:absolute; right:15px; background:#fff; color:#ff1493; border:none; padding:5px 12px; border-radius:10px; cursor:pointer; font-weight:bold; }
@@ -24,6 +46,7 @@ body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
 .typing-indicator { font-size:14px; color:#666; margin-bottom:5px; margin-left:5px; display:none; }
 </style>
 </head>
+
 <body>
 
 <div class="topbar">
@@ -41,141 +64,123 @@ Chat Room
 </div>
 
 <script>
-let CURRENT = null;
-let CHAT_ID = null;
-let OTHER_ID = null;
-let typingTimeout;
-let BLOCKED = false;
+let CURRENT=null, CHAT_ID=null, OTHER_ID=null, BLOCKED=false;
 
-// Helper: format timestamp
-function formatTime(ts){
-    const d = new Date(ts);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate()-1);
-
-    if(d.toDateString()===today.toDateString()) return "Today " + d.getHours().toString().padStart(2,'0')+":"+d.getMinutes().toString().padStart(2,'0');
-    if(d.toDateString()===yesterday.toDateString()) return "Yesterday " + d.getHours().toString().padStart(2,'0')+":"+d.getMinutes().toString().padStart(2,'0');
-
-    return d.getDate().toString().padStart(2,'0') + "-" + (d.getMonth()+1).toString().padStart(2,'0') + "-" + d.getFullYear() + " " + d.getHours().toString().padStart(2,'0')+":"+d.getMinutes().toString().padStart(2,'0');
+/* ---------- BACK ---------- */
+function goBack(){
+  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:false});
+  location.href="chat.html";
 }
 
-// Go back
-function goBack(){ 
-    db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:false});
-    location.href="chat.html"; 
-}
-
-// Auth & init
+/* ---------- AUTH START ---------- */
 auth.onAuthStateChanged(async user=>{
-    if(!user) return location.href="login.html";
-    CURRENT = user;
+  if(!user) return location.href="login.html";
+  CURRENT = user;
 
-    const params = new URLSearchParams(window.location.search);
-    CHAT_ID = params.get("id");
-    if(!CHAT_ID) return alert("Invalid Chat Room!");
+  const params = new URLSearchParams(window.location.search);
+  CHAT_ID = params.get("id");
 
-    const parts = CHAT_ID.split("_");
-    OTHER_ID = parts[0]===CURRENT.uid ? parts[1] : parts[0];
+  const parts = CHAT_ID.split("_");
+  OTHER_ID = parts[0] === CURRENT.uid ? parts[1] : parts[0];
 
-    db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:true});
+  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:true});
 
-    // Check block status
-    const chatDoc = await db.collection("chats").doc(CHAT_ID).get();
-    if(chatDoc.exists){
-        const data = chatDoc.data();
-        BLOCKED = data[CURRENT.uid+"_blocked"] || false;
-        document.getElementById("blockBtn").innerText = BLOCKED ? "Unblock" : "Block";
-    }
-
-    loadMessages();
-    listenTyping();
+  loadMessages();
+  listenTyping();
+  setupNotifications();
 });
 
-// Load messages
+/* ---------- LOAD MESSAGES ---------- */
 function loadMessages(){
-    const chatList = document.getElementById("chatList");
-    chatList.innerHTML = "";
+  const chatList = document.getElementById("chatList");
+  chatList.innerHTML="";
 
-    db.collection("chats").doc(CHAT_ID).collection("messages")
-      .orderBy("time","asc")
-      .onSnapshot(snapshot=>{
-        chatList.innerHTML = "";
-        snapshot.forEach(async doc=>{
-            const m = doc.data();
-            const div = document.createElement("div");
-            div.className = "msg "+(m.from===CURRENT.uid?"sender":"receiver");
-            div.innerText = m.text;
+  db.collection("chats").doc(CHAT_ID).collection("messages")
+    .orderBy("time","asc")
+    .onSnapshot(snapshot=>{
+      chatList.innerHTML="";
 
-            if(m.from===CURRENT.uid){
-                const seen = document.createElement("span");
-                seen.className = "seen";
-                seen.innerText = m.seen?"Seen":"Sent";
-                div.appendChild(seen);
-            } else {
-                if(!m.seen){
-                    await db.collection("chats").doc(CHAT_ID).collection("messages").doc(doc.id).update({seen:true});
-                }
-            }
+      snapshot.forEach(doc=>{
+        const m = doc.data();
 
-            const time = document.createElement("span");
-            time.className = "timestamp";
-            time.innerText = formatTime(m.time);
-            div.appendChild(time);
+        const div = document.createElement("div");
+        div.className = "msg " + (m.from===CURRENT.uid?"sender":"receiver");
+        div.innerText = m.text;
 
-            chatList.appendChild(div);
-        });
-        chatList.scrollTop = chatList.scrollHeight;
+        chatList.appendChild(div);
+      });
+
+      chatList.scrollTop = chatList.scrollHeight;
     });
 }
 
-// Send message
+/* ---------- SEND MESSAGE ---------- */
 async function sendMessage(){
-    if(BLOCKED){ alert("You cannot send messages to a blocked user!"); return; }
-    const input = document.getElementById("msgInput");
-    const text = input.value.trim();
-    if(!text) return;
+  const input=document.getElementById("msgInput");
+  const text=input.value.trim();
+  if(!text) return;
 
-    await db.collection("chats").doc(CHAT_ID).collection("messages").add({
-        text: text,
-        from: CURRENT.uid,
-        to: OTHER_ID,
-        time: Date.now(),
-        seen:false
-    });
+  await db.collection("chats").doc(CHAT_ID).collection("messages").add({
+    text:text,
+    from:CURRENT.uid,
+    to:OTHER_ID,
+    time:Date.now(),
+    seen:false
+  });
 
-    await db.collection("chats").doc(CHAT_ID).update({lastMsg:text, time:Date.now()});
-    input.value = "";
-    updateTyping(false);
+  await db.collection("users").doc(OTHER_ID).update({
+    notifMsg:text,
+    notifFrom:CURRENT.uid,
+    notifTime:Date.now()
+  });
+
+  input.value="";
 }
 
-// Typing indicator
+/* ---------- TYPING ---------- */
 function updateTyping(isTyping){
-    db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_typing"]:isTyping});
-    clearTimeout(typingTimeout);
-    if(isTyping){
-        typingTimeout = setTimeout(()=>updateTyping(false),2000);
-    }
+  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_typing"]:isTyping});
 }
 
 function listenTyping(){
-    const indicator = document.getElementById("typingIndicator");
-    db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{
-        const data = doc.data();
-        if(!data) return;
-        if(data[OTHER_ID+"_typing"]){
-            indicator.style.display = "block";
-        } else {
-            indicator.style.display = "none";
-        }
-    });
+  const ind=document.getElementById("typingIndicator");
+  db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{
+    const data=doc.data();
+    ind.style.display = data[OTHER_ID+"_typing"] ? "block" : "none";
+  });
 }
 
-// Block / Unblock
+/* ---------- BLOCK ---------- */
 async function toggleBlock(){
-    BLOCKED = !BLOCKED;
-    document.getElementById("blockBtn").innerText = BLOCKED ? "Unblock" : "Block";
-    await db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_blocked"]:BLOCKED});
+  BLOCKED=!BLOCKED;
+  document.getElementById("blockBtn").innerText = BLOCKED?"Unblock":"Block";
+  await db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_blocked"]:BLOCKED});
+}
+
+/* ---------- NOTIFICATIONS SYSTEM ---------- */
+async function setupNotifications(){
+  try{
+    const permission = await Notification.requestPermission();
+    if(permission !== "granted") return;
+
+    const token = await messaging.getToken({
+      vapidKey: "YOUR_VAPID_KEY_HERE"   <!-- यहां अपनी VAPID KEY डालना है -->
+    });
+
+    await db.collection("users").doc(CURRENT.uid).update({
+      fcmToken: token
+    });
+
+    messaging.onMessage((payload)=>{
+      new Notification(payload.notification.title,{
+        body:payload.notification.body,
+        icon:"icon.png"
+      });
+    });
+
+  }catch(e){
+    console.log("Notification Error:", e);
+  }
 }
 </script>
 
