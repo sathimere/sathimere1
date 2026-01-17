@@ -66,6 +66,7 @@ body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
     box-shadow: 0 0 10px #ffc0d9;
     display: flex;
     align-items: center;
+    position: relative;
 }
 
 .user-card img {
@@ -82,6 +83,10 @@ body { font-family: Arial; background: #ffe4f0; margin: 0; padding: 0; }
 .btn { background: #ff1493; color: white; border: none; border-radius: 8px; margin-top: 5px; padding: 7px 12px; cursor: pointer; }
 .btn-disabled { background: gray; }
 
+/* Online Dot */
+.online-dot { position:absolute; width:12px; height:12px; border-radius:50%; background:green; top:0; right:0; border:2px solid white; }
+
+/* Bottom Navigation */
 .bottom-nav {
     position: fixed;
     bottom: 0;
@@ -160,42 +165,68 @@ async function loadUsers(myId) {
     let opposite = myGender === "Male" ? "Female" : "Male";
 
     db.collection("users").where("gender","==",opposite)
-    .onSnapshot(snap=>{
+    .onSnapshot(async snap=>{
         list.innerHTML="";
         ALL_USERS=[];
-        snap.forEach(doc=>{
+        for(let doc of snap.docs){
             let u = doc.data();
             u.uid = doc.id;
             ALL_USERS.push(u);
-        });
-        renderUsers(ALL_USERS, myId);
+        }
+        await renderUsers(ALL_USERS, myId);
     });
 }
 
-function renderUsers(users, myId) {
+async function renderUsers(users, myId) {
     const list = document.getElementById("userList");
     list.innerHTML="";
 
-    users.forEach(u=>{
+    for(let u of users){
         let uid = u.uid;
-        let card = document.createElement("div");
+        const card = document.createElement("div");
         card.className="user-card";
 
-        card.innerHTML=`
-            <img src="${u.photo || 'https://i.imgur.com/6VBx3io.png'}">
-            <div style="flex:1">
-                <div class="name">${u.name} ${u.surname}</div>
-                <div style="color:gray">${u.gender}</div>
-                <button id="like_${uid}" class="btn" onclick="toggleLike('${uid}','${u.name}','${u.photo}')">🤍 Like</button>
-                <button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>
-                <button id="btn_${uid}" class="btn">✉ Chat Request</button>
-            </div>
+        // Image wrapper
+        const imgWrapper = document.createElement("div");
+        imgWrapper.style.position="relative";
+        const img = document.createElement("img");
+        img.src = u.photo || 'https://i.imgur.com/6VBx3io.png';
+        imgWrapper.appendChild(img);
+
+        // Real-time online dot
+        const chatID = myId < uid ? myId+"_"+uid : uid+"_"+myId;
+        db.collection("chats").doc(chatID).onSnapshot(doc=>{
+            const dot = imgWrapper.querySelector(".online-dot");
+            const isOnline = doc.exists ? doc.data()[uid+"_online"]===true : false;
+            if(isOnline){
+                if(!dot){
+                    const d = document.createElement("div");
+                    d.className="online-dot";
+                    imgWrapper.appendChild(d);
+                }
+            } else {
+                if(dot) dot.remove();
+            }
+        });
+
+        card.appendChild(imgWrapper);
+
+        const infoDiv = document.createElement("div");
+        infoDiv.style.flex="1";
+        infoDiv.innerHTML=`
+            <div class="name">${u.name} ${u.surname}</div>
+            <div style="color:gray">${u.gender}</div>
+            <button id="like_${uid}" class="btn" onclick="toggleLike('${uid}','${u.name}','${u.photo}')">🤍 Like</button>
+            <button class="btn" onclick="viewProfile('${uid}')">👀 View Profile</button>
+            <button id="btn_${uid}" class="btn">✉ Chat Request</button>
         `;
+        card.appendChild(infoDiv);
+
         list.appendChild(card);
 
         checkStatus(myId, uid);
         document.getElementById("btn_" + uid).onclick = () => sendRequest(myId, uid, u.gender);
-    });
+    }
 }
 
 /* ===== LIKE SYSTEM ===== */
@@ -251,13 +282,13 @@ async function checkStatus(myId,otherId){
         }
         if(status==="accepted"){
             btn.innerText="Chat Now";
-            btn.onclick=()=>window.location="chat-room.html?u="+otherId;
+            btn.onclick=()=>window.location="chat-room.html?id="+(myId<otherId ? myId+"_"+otherId : otherId+"_"+myId);
         }
     }
 }
 
 /* =============================
-   CHAT REQUEST SYSTEM (FIXED)
+   CHAT REQUEST SYSTEM
    ============================= */
 async function sendRequest(myId,toId,otherGender){
     let me = await db.collection("users").doc(myId).get();
@@ -316,4 +347,4 @@ function logout(){
 </script>
 
 </body>
-</html>
+    </html>
