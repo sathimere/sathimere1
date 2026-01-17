@@ -10,19 +10,25 @@
 <style>
 body { font-family: Arial; background: #ffe4f0; margin:0; padding:0; }
 .header { background:#ff1493; padding:15px; color:#fff; text-align:center; font-size:22px; font-weight:bold; position:fixed; top:0; width:100%; z-index:10; }
-.container { padding:80px 15px 20px; }
+.container { padding:80px 15px 70px; }
 .section-title { margin-top:15px; font-weight:bold; color:#ff1493; font-size:18px; margin-bottom:10px; }
-.request-card { background:white; margin-bottom:10px; padding:10px 15px; border-radius:12px; display:flex; align-items:center; box-shadow:0 0 10px #ffc0d9; }
+.request-card { background:white; margin-bottom:10px; padding:10px 15px; border-radius:12px; display:flex; align-items:center; box-shadow:0 0 10px #ffc0d9; position:relative; }
 .request-card img { width:50px; height:50px; border-radius:50%; object-fit:cover; border:3px solid #ff1493; margin-right:10px; }
 .name { font-weight:bold; color:#ff1493; }
 .btn { background:#ff1493; color:white; border:none; border-radius:8px; padding:6px 12px; margin-left:5px; cursor:pointer; }
 .btn-disabled { background:gray; }
+/* Online dot */
+.online-dot { position:absolute; width:12px; height:12px; border-radius:50%; background:green; bottom:5px; left:45px; border:2px solid white; }
+/* Bottom Back Button */
+#backBtn { position:fixed; bottom:10px; left:50%; transform:translateX(-50%); background:#ff1493; color:white; border:none; border-radius:25px; padding:10px 20px; font-weight:bold; cursor:pointer; z-index:10; box-shadow:0 2px 6px rgba(0,0,0,0.2);}
 </style>
 </head>
 <body>
 
 <div class="header">Chat Requests</div>
 <div class="container" id="requestList">Loading...</div>
+
+<button id="backBtn" onclick="goBack()">← Back to Home</button>
 
 <script>
 let CURRENT = null;
@@ -32,6 +38,8 @@ auth.onAuthStateChanged(async user=>{
     CURRENT = user;
     loadChatRequests();
 });
+
+function goBack(){ location.href="index.html"; }
 
 async function loadChatRequests(){
     const container = document.getElementById("requestList");
@@ -86,15 +94,33 @@ async function createCard(userId, requestId, isPending){
     const userDoc = await db.collection("users").doc(userId).get();
     const u = userDoc.data();
 
+    // Check online status
+    const chatID = CURRENT.uid < userId ? CURRENT.uid+"_"+userId : userId+"_"+CURRENT.uid;
+    const chatDoc = await db.collection("chats").doc(chatID).get();
+    const isOnline = chatDoc.exists ? chatDoc.data()[userId+"_online"]===true : false;
+
     const card = document.createElement("div");
     card.className = "request-card";
-    card.innerHTML = `
-        <img src="${u.photo||'https://i.imgur.com/6VBx3io.png'}">
-        <div style="flex:1">
-            <div class="name">${u.name} ${u.surname}</div>
-            <div style="color:gray">${u.gender}</div>
-        </div>
-    `;
+
+    const imgWrapper = document.createElement("div");
+    imgWrapper.style.position = "relative";
+    const img = document.createElement("img");
+    img.src = u.photo||'https://i.imgur.com/6VBx3io.png';
+    imgWrapper.appendChild(img);
+
+    if(isOnline){
+        const dot = document.createElement("div");
+        dot.className = "online-dot";
+        imgWrapper.appendChild(dot);
+    }
+
+    card.appendChild(imgWrapper);
+
+    const infoDiv = document.createElement("div");
+    infoDiv.style.flex = "1";
+    infoDiv.innerHTML = `<div class="name">${u.name} ${u.surname}</div>
+                         <div style="color:gray">${u.gender}</div>`;
+    card.appendChild(infoDiv);
 
     if(isPending){
         const acceptBtn = document.createElement("button");
@@ -161,4 +187,4 @@ function openChat(uid1, uid2){
 }
 </script>
 </body>
-    </html>
+</html>
