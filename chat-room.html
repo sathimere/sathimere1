@@ -8,9 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 
-<!-- Your Config -->
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
@@ -22,89 +20,39 @@ const firebaseConfig = {
   appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
 };
 firebase.initializeApp(firebaseConfig);
-
 const auth = firebase.auth();
 const db = firebase.firestore();
-const messaging = firebase.messaging();
 </script>
 
 <style>
 body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
 
-/* TOP BAR */
-.topbar {
-  height:55px;
-  background:#ff1493;
-  color:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  position:fixed;
-  top:0;
-  width:100%;
-  z-index:10;
-  font-size:18px;
-  font-weight:bold;
-}
-.topbar span:first-child { position:absolute; left:15px; cursor:pointer; font-size:24px; }
-#statusBar { font-size:12px; font-weight:normal; position:absolute; bottom:4px; }
+/* Top bar */
+.topbar { height:55px; background:#ff1493; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; width:100%; z-index:10; font-size:18px; font-weight:bold;}
+.topbar span:first-child { position:absolute; left:15px; cursor:pointer; font-size:24px;}
+#statusBar { font-size:12px; font-weight:normal; position:absolute; bottom:4px;}
 
-/* CHAT */
-.chat-container {
-  padding:70px 10px 100px;
-  max-width:600px;
-  margin:auto;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.msg {
-  padding:10px 15px;
-  border-radius:15px;
-  max-width:80%;
-  word-wrap:break-word;
-  position:relative;
-}
-.sender { background:#ff1493; color:#fff; align-self:flex-end; border-bottom-right-radius:0; }
-.receiver { background:#fff; color:#333; align-self:flex-start; border-bottom-left-radius:0; }
-.seen { font-size:10px; color:#eee; position:absolute; bottom:2px; right:5px; }
-.timestamp { font-size:10px; color:#666; position:absolute; bottom:2px; left:5px; }
+/* Chat container */
+.chat-container { padding:70px 10px 100px; max-width:600px; margin:auto; display:flex; flex-direction:column; gap:10px;}
+.msg { padding:10px 15px; border-radius:15px; max-width:80%; word-wrap:break-word; position:relative;}
+.sender { background:#ff1493; color:#fff; align-self:flex-end; border-bottom-right-radius:0;}
+.receiver { background:#fff; color:#333; align-self:flex-start; border-bottom-left-radius:0;}
+.seen { font-size:10px; color:#eee; position:absolute; bottom:2px; right:5px;}
+.timestamp { font-size:10px; color:#666; position:absolute; bottom:2px; left:5px;}
 
-/* INPUT BOX */
-.input-container {
-  position:fixed;
-  bottom:0;
-  width:100%;
-  background:#fff;
-  display:flex;
-  padding:8px;
-  box-shadow:0 -3px 10px rgba(0,0,0,0.1);
-  gap:5px;
-}
-.input-container input {
-  flex:1;
-  padding:10px;
-  border-radius:20px;
-  border:1px solid #ccc;
-  outline:none;
-}
-.input-container button {
-  background:#ff1493;
-  color:#fff;
-  border:none;
-  border-radius:20px;
-  padding:10px 15px;
-  cursor:pointer;
-  font-weight:bold;
-}
+/* Input container */
+.input-container { position:fixed; bottom:0; width:100%; background:#fff; display:flex; padding:8px; box-shadow:0 -3px 10px rgba(0,0,0,0.1); gap:5px;}
+.input-container input { flex:1; padding:10px; border-radius:20px; border:1px solid #ccc; outline:none;}
+.input-container button { background:#ff1493; color:#fff; border:none; border-radius:20px; padding:10px 15px; cursor:pointer; font-weight:bold;}
 
-/* Typing */
-.typing-indicator {
-  font-size:14px;
-  color:#666;
-  margin-left:10px;
-  display:none;
-}
+/* Typing indicator */
+.typing-indicator { font-size:14px; color:#666; margin-left:10px; display:none;}
+
+/* Buttons */
+#blockBtn, #voiceBtn { position:absolute; top:8px; background:#fff; color:#ff1493; border:none; padding:5px 12px; border-radius:10px; cursor:pointer; font-weight:bold;}
+#blockBtn { right:15px;} #voiceBtn { right:110px;}
+#callControls { display:none; position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:#fff; padding:10px; border-radius:10px; box-shadow:0 0 10px #ccc;}
+#callControls button { margin:5px; padding:8px 12px; border:none; border-radius:8px; cursor:pointer; font-weight:bold;}
 </style>
 </head>
 
@@ -116,6 +64,8 @@ body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
     <div>Chat Room</div>
     <div id="statusBar">Loading...</div>
   </div>
+  <button id="voiceBtn" onclick="initCall()">Voice Call</button>
+  <button id="blockBtn" onclick="toggleBlock()">Block</button>
 </div>
 
 <div class="chat-container" id="chatList">Loading...</div>
@@ -126,6 +76,13 @@ body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
   <button onclick="sendMessage()">Send</button>
 </div>
 
+<div id="callControls">
+  <button onclick="acceptCall()">Accept</button>
+  <button onclick="declineCall()">Decline</button>
+</div>
+
+<audio id="remoteAudio" autoplay></audio>
+
 <script>
 let CURRENT = null;
 let CHAT_ID = null;
@@ -133,150 +90,142 @@ let OTHER_ID = null;
 let BLOCKED = false;
 let typingTimeout;
 
-/* SOUND */
+// Sound
 const msgSound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
 
-/* TITLE BLINK */
+// Blink title
 let blinkInt;
-function startBlink(){
-  stopBlink();
-  blinkInt = setInterval(()=>{
-    document.title = document.title === "New Message!" ? "Sathi Mere" : "New Message!";
-  }, 800);
-}
-function stopBlink(){
-  clearInterval(blinkInt);
-  document.title = "Sathi Mere";
-}
+function startBlink(){ stopBlink(); blinkInt=setInterval(()=>{document.title=document.title==="New Message!"?"Sathi Mere":"New Message!";},800);}
+function stopBlink(){ clearInterval(blinkInt); document.title="Sathi Mere";}
 
-/* BACK */
-function goBack(){
-  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:false,lastSeen:Date.now()});
-  location.href="chat.html";
-}
+// Go Back
+function goBack(){ db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:false,lastSeen:Date.now()}); location.href="chat.html";}
 
-/* INIT */
+// Auth Init
 auth.onAuthStateChanged(async user=>{
   if(!user) return location.href="login.html";
-  CURRENT = user;
+  CURRENT=user;
 
-  const params = new URLSearchParams(window.location.search);
-  CHAT_ID = params.get("id");
+  const params=new URLSearchParams(window.location.search);
+  CHAT_ID=params.get("id");
   if(!CHAT_ID) return alert("Invalid Chat Room");
 
-  const parts = CHAT_ID.split("_");
-  OTHER_ID = parts[0]===CURRENT.uid ? parts[1] : parts[0];
+  const parts=CHAT_ID.split("_");
+  OTHER_ID=parts[0]===CURRENT.uid?parts[1]:parts[0];
 
-  /* Set Online */
   db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:true,lastSeen:Date.now()});
-
   loadStatus();
   loadMessages();
   listenTyping();
+  checkBlockStatus();
+  listenCallSignals();
 });
 
-/* STATUS BAR */
-function loadStatus(){
-  db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{
-    const d = doc.data();
-    if(!d) return;
+// Status
+function loadStatus(){ db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{ const d=doc.data(); if(!d) return; const online=d[OTHER_ID+"_online"]; const ls=d.lastSeen||0; statusBar.innerText=online?"Online":"Last seen: "+new Date(ls).toLocaleTimeString();});}
 
-    const online = d[OTHER_ID+"_online"];
-    const ls = d.lastSeen || 0;
+// Block
+async function toggleBlock(){ BLOCKED=!BLOCKED; blockBtn.innerText=BLOCKED?"Unblock":"Block"; await db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_blocked"]:BLOCKED});}
+async function checkBlockStatus(){ const doc=await db.collection("chats").doc(CHAT_ID).get(); if(doc.exists){BLOCKED=doc.data()[CURRENT.uid+"_blocked"]||false; blockBtn.innerText=BLOCKED?"Unblock":"Block";}}
 
-    if(online){
-      statusBar.innerText = "Online";
-    } else {
-      statusBar.innerText = "Last seen: " + new Date(ls).toLocaleTimeString();
-    }
-  });
-}
-
-/* LOAD MESSAGES */
+// Load messages
 function loadMessages(){
-  const chatList = document.getElementById("chatList");
-
-  db.collection("chats").doc(CHAT_ID).collection("messages")
-    .orderBy("time","asc")
-    .onSnapshot(snapshot=>{
-      chatList.innerHTML = "";
-      snapshot.forEach(mDoc=>{
-        const m = mDoc.data();
-        const box = document.createElement("div");
-        box.className = "msg " + (m.from === CURRENT.uid ? "sender" : "receiver");
-        box.innerText = m.text;
-
-        /* Timestamp */
-        const t = document.createElement("span");
-        t.className="timestamp";
-        t.innerText = new Date(m.time).toLocaleTimeString();
-        box.appendChild(t);
-
-        /* Seen */
-        if(m.from === CURRENT.uid){
-          const s = document.createElement("span");
-          s.className="seen";
-          s.innerText = m.seen?"Seen":"Sent";
-          box.appendChild(s);
-        } else {
-          if(!m.seen){
-            db.collection("chats").doc(CHAT_ID).collection("messages")
-              .doc(mDoc.id).update({seen:true});
-          }
-          msgSound.play();
-          startBlink();
-        }
-
-        chatList.appendChild(box);
-      });
-
-      chatList.scrollTop = chatList.scrollHeight;
+  const chatList=document.getElementById("chatList");
+  db.collection("chats").doc(CHAT_ID).collection("messages").orderBy("time","asc").onSnapshot(snapshot=>{
+    chatList.innerHTML="";
+    snapshot.forEach(mDoc=>{
+      const m=mDoc.data();
+      const box=document.createElement("div");
+      box.className="msg "+(m.from===CURRENT.uid?"sender":"receiver");
+      box.innerText=m.text;
+      const t=document.createElement("span"); t.className="timestamp"; t.innerText=new Date(m.time).toLocaleTimeString(); box.appendChild(t);
+      if(m.from===CURRENT.uid){ const s=document.createElement("span"); s.className="seen"; s.innerText=m.seen?"Seen":"Sent"; box.appendChild(s);}
+      else{ if(!m.seen){ db.collection("chats").doc(CHAT_ID).collection("messages").doc(mDoc.id).update({seen:true});} msgSound.play(); startBlink();}
+      chatList.appendChild(box);
     });
+    chatList.scrollTop=chatList.scrollHeight;
+  });
 }
 
-/* SEND MSG */
+// Send message
 async function sendMessage(){
-  const input = msgInput.value.trim();
-  if(!input) return;
-
-  msgInput.value = "";
-
-  db.collection("chats").doc(CHAT_ID).collection("messages").add({
-    text:input,
-    from:CURRENT.uid,
-    to:OTHER_ID,
-    time:Date.now(),
-    seen:false
-  });
-
-  db.collection("chats").doc(CHAT_ID).update({
-    lastMsg:input,
-    time:Date.now()
-  });
-
+  const input=msgInput.value.trim();
+  if(!input || BLOCKED){ if(BLOCKED) alert("You cannot send messages to a blocked user!"); return;}
+  msgInput.value="";
+  db.collection("chats").doc(CHAT_ID).collection("messages").add({text:input,from:CURRENT.uid,to:OTHER_ID,time:Date.now(),seen:false});
+  db.collection("chats").doc(CHAT_ID).update({lastMsg:input,time:Date.now()});
   updateTyping(false);
 }
 
-/* TYPING */
-function updateTyping(state){
-  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_typing"]:state});
-  clearTimeout(typingTimeout);
-  if(state){
-    typingTimeout=setTimeout(()=>updateTyping(false),2000);
-  }
+// Typing
+function updateTyping(state){ db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_typing"]:state}); clearTimeout(typingTimeout); if(state){ typingTimeout=setTimeout(()=>updateTyping(false),2000);}}
+function listenTyping(){ db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{ const d=doc.data(); typingIndicator.style.display=d[OTHER_ID+"_typing"]?"block":"none";});}
+
+// ----------------- WebRTC Voice Call -----------------
+let pc=null;
+let localStream=null;
+let callDoc=null;
+
+async function initCall(){
+  if(BLOCKED){ alert("User is blocked!"); return;}
+  // Create peer connection
+  pc=new RTCPeerConnection();
+  localStream=await navigator.mediaDevices.getUserMedia({audio:true});
+  localStream.getTracks().forEach(track=>pc.addTrack(track,localStream));
+
+  pc.ontrack=e=>{ remoteAudio.srcObject=e.streams[0]; }
+  pc.onicecandidate=e=>{ if(e.candidate) callDoc.update({iceCandidates:firebase.firestore.FieldValue.arrayUnion(e.candidate)});}
+
+  callDoc=db.collection("calls").doc(CHAT_ID);
+  await callDoc.set({from:CURRENT.uid,to:OTHER_ID,offer:null,answer:null,iceCandidates:[]});
+
+  const offer=await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  await callDoc.update({offer:offer.toJSON()});
+
+  callControls.style.display="block";
 }
 
-function listenTyping(){
-  db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{
-    const d = doc.data();
-    if(d[OTHER_ID+"_typing"]){
-      typingIndicator.style.display="block";
-    } else {
-      typingIndicator.style.display="none";
+function listenCallSignals(){
+  db.collection("calls").doc(CHAT_ID).onSnapshot(async doc=>{
+    const d=doc.data();
+    if(!d) return;
+    if(d.offer && d.to===CURRENT.uid && !pc){
+      // Incoming call
+      pc=new RTCPeerConnection();
+      localStream=await navigator.mediaDevices.getUserMedia({audio:true});
+      localStream.getTracks().forEach(track=>pc.addTrack(track,localStream));
+      pc.ontrack=e=>{ remoteAudio.srcObject=e.streams[0]; }
+      pc.onicecandidate=e=>{ if(e.candidate) callDoc.update({iceCandidates:firebase.firestore.FieldValue.arrayUnion(e.candidate)});}
+      callDoc=doc.ref;
+      callControls.style.display="block";
     }
+    if(d.answer && pc){ await pc.setRemoteDescription(new RTCSessionDescription(d.answer)); }
+    if(d.iceCandidates && pc){ d.iceCandidates.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c))); }
   });
 }
+
+async function acceptCall(){
+  const docSnap=await callDoc.get();
+  const data=docSnap.data();
+  await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+  const answer=await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  await callDoc.update({answer:answer.toJSON()});
+  callControls.style.display="none";
+}
+
+function declineCall(){ callControls.style.display="none"; if(callDoc) callDoc.delete(); if(pc){pc.close(); pc=null;}}
+
+// -----------------------------------------------------
+
 </script>
+
+<audio id="remoteAudio" autoplay></audio>
+<div id="callControls">
+  <button onclick="acceptCall()">Accept</button>
+  <button onclick="declineCall()">Decline</button>
+</div>
 
 </body>
 </html>
