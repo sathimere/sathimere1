@@ -10,7 +10,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 
-<!-- Firebase Config -->
+<!-- Your Config -->
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyCNujpIBIvJXMk34yQF1VeuTVFi5M7vdc0",
@@ -21,7 +21,6 @@ const firebaseConfig = {
   messagingSenderId: "290492321074",
   appId: "1:290492321074:web:05aa3d9abc2d3ab7635b2b"
 };
-
 firebase.initializeApp(firebaseConfig);
 
 const auth = firebase.auth();
@@ -30,157 +29,252 @@ const messaging = firebase.messaging();
 </script>
 
 <style>
-body { margin:0; font-family:Arial; background:#f2f2f2; }
-.topbar { height:55px; background:#ff1493; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; width:100%; z-index:10; font-size:20px; }
-.topbar span:first-child { position:absolute; left:15px; cursor:pointer; font-size:22px; }
-.topbar button { position:absolute; right:15px; background:#fff; color:#ff1493; border:none; padding:5px 12px; border-radius:10px; cursor:pointer; font-weight:bold; }
-.chat-container { padding:70px 10px 100px; max-width:600px; margin:auto; display:flex; flex-direction:column; gap:10px; }
-.msg { padding:10px 15px; border-radius:15px; max-width:80%; word-wrap:break-word; position:relative; }
+body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
+
+/* TOP BAR */
+.topbar {
+  height:55px;
+  background:#ff1493;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:fixed;
+  top:0;
+  width:100%;
+  z-index:10;
+  font-size:18px;
+  font-weight:bold;
+}
+.topbar span:first-child { position:absolute; left:15px; cursor:pointer; font-size:24px; }
+#statusBar { font-size:12px; font-weight:normal; position:absolute; bottom:4px; }
+
+/* CHAT */
+.chat-container {
+  padding:70px 10px 100px;
+  max-width:600px;
+  margin:auto;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.msg {
+  padding:10px 15px;
+  border-radius:15px;
+  max-width:80%;
+  word-wrap:break-word;
+  position:relative;
+}
 .sender { background:#ff1493; color:#fff; align-self:flex-end; border-bottom-right-radius:0; }
 .receiver { background:#fff; color:#333; align-self:flex-start; border-bottom-left-radius:0; }
 .seen { font-size:10px; color:#eee; position:absolute; bottom:2px; right:5px; }
 .timestamp { font-size:10px; color:#666; position:absolute; bottom:2px; left:5px; }
-.input-container { position:fixed; bottom:0; width:100%; background:#fff; display:flex; padding:8px; box-shadow:0 -3px 10px rgba(0,0,0,0.1); gap:5px; }
-.input-container input { flex:1; padding:10px; border-radius:20px; border:1px solid #ccc; outline:none; }
-.input-container button { background:#ff1493; color:#fff; border:none; border-radius:20px; padding:10px 15px; cursor:pointer; font-weight:bold; }
-.typing-indicator { font-size:14px; color:#666; margin-bottom:5px; margin-left:5px; display:none; }
+
+/* INPUT BOX */
+.input-container {
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:#fff;
+  display:flex;
+  padding:8px;
+  box-shadow:0 -3px 10px rgba(0,0,0,0.1);
+  gap:5px;
+}
+.input-container input {
+  flex:1;
+  padding:10px;
+  border-radius:20px;
+  border:1px solid #ccc;
+  outline:none;
+}
+.input-container button {
+  background:#ff1493;
+  color:#fff;
+  border:none;
+  border-radius:20px;
+  padding:10px 15px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+/* Typing */
+.typing-indicator {
+  font-size:14px;
+  color:#666;
+  margin-left:10px;
+  display:none;
+}
 </style>
 </head>
 
 <body>
 
 <div class="topbar">
-<span onclick="goBack()">←</span>
-Chat Room
-<button id="blockBtn" onclick="toggleBlock()">Block</button>
+  <span onclick="goBack()">←</span>
+  <div>
+    <div>Chat Room</div>
+    <div id="statusBar">Loading...</div>
+  </div>
 </div>
 
 <div class="chat-container" id="chatList">Loading...</div>
 <div class="typing-indicator" id="typingIndicator">Typing...</div>
 
 <div class="input-container">
-<input type="text" id="msgInput" placeholder="Type a message..." oninput="updateTyping(true)">
-<button onclick="sendMessage()">Send</button>
+  <input type="text" id="msgInput" placeholder="Type a message..." oninput="updateTyping(true)">
+  <button onclick="sendMessage()">Send</button>
 </div>
 
 <script>
-let CURRENT=null, CHAT_ID=null, OTHER_ID=null, BLOCKED=false;
+let CURRENT = null;
+let CHAT_ID = null;
+let OTHER_ID = null;
+let BLOCKED = false;
+let typingTimeout;
 
-/* ---------- BACK ---------- */
+/* SOUND */
+const msgSound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+
+/* TITLE BLINK */
+let blinkInt;
+function startBlink(){
+  stopBlink();
+  blinkInt = setInterval(()=>{
+    document.title = document.title === "New Message!" ? "Sathi Mere" : "New Message!";
+  }, 800);
+}
+function stopBlink(){
+  clearInterval(blinkInt);
+  document.title = "Sathi Mere";
+}
+
+/* BACK */
 function goBack(){
-  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:false});
+  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:false,lastSeen:Date.now()});
   location.href="chat.html";
 }
 
-/* ---------- AUTH START ---------- */
+/* INIT */
 auth.onAuthStateChanged(async user=>{
   if(!user) return location.href="login.html";
   CURRENT = user;
 
   const params = new URLSearchParams(window.location.search);
   CHAT_ID = params.get("id");
+  if(!CHAT_ID) return alert("Invalid Chat Room");
 
   const parts = CHAT_ID.split("_");
-  OTHER_ID = parts[0] === CURRENT.uid ? parts[1] : parts[0];
+  OTHER_ID = parts[0]===CURRENT.uid ? parts[1] : parts[0];
 
-  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:true});
+  /* Set Online */
+  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:true,lastSeen:Date.now()});
 
+  loadStatus();
   loadMessages();
   listenTyping();
-  setupNotifications();
 });
 
-/* ---------- LOAD MESSAGES ---------- */
+/* STATUS BAR */
+function loadStatus(){
+  db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{
+    const d = doc.data();
+    if(!d) return;
+
+    const online = d[OTHER_ID+"_online"];
+    const ls = d.lastSeen || 0;
+
+    if(online){
+      statusBar.innerText = "Online";
+    } else {
+      statusBar.innerText = "Last seen: " + new Date(ls).toLocaleTimeString();
+    }
+  });
+}
+
+/* LOAD MESSAGES */
 function loadMessages(){
   const chatList = document.getElementById("chatList");
-  chatList.innerHTML="";
 
   db.collection("chats").doc(CHAT_ID).collection("messages")
     .orderBy("time","asc")
     .onSnapshot(snapshot=>{
-      chatList.innerHTML="";
+      chatList.innerHTML = "";
+      snapshot.forEach(mDoc=>{
+        const m = mDoc.data();
+        const box = document.createElement("div");
+        box.className = "msg " + (m.from === CURRENT.uid ? "sender" : "receiver");
+        box.innerText = m.text;
 
-      snapshot.forEach(doc=>{
-        const m = doc.data();
+        /* Timestamp */
+        const t = document.createElement("span");
+        t.className="timestamp";
+        t.innerText = new Date(m.time).toLocaleTimeString();
+        box.appendChild(t);
 
-        const div = document.createElement("div");
-        div.className = "msg " + (m.from===CURRENT.uid?"sender":"receiver");
-        div.innerText = m.text;
+        /* Seen */
+        if(m.from === CURRENT.uid){
+          const s = document.createElement("span");
+          s.className="seen";
+          s.innerText = m.seen?"Seen":"Sent";
+          box.appendChild(s);
+        } else {
+          if(!m.seen){
+            db.collection("chats").doc(CHAT_ID).collection("messages")
+              .doc(mDoc.id).update({seen:true});
+          }
+          msgSound.play();
+          startBlink();
+        }
 
-        chatList.appendChild(div);
+        chatList.appendChild(box);
       });
 
       chatList.scrollTop = chatList.scrollHeight;
     });
 }
 
-/* ---------- SEND MESSAGE ---------- */
+/* SEND MSG */
 async function sendMessage(){
-  const input=document.getElementById("msgInput");
-  const text=input.value.trim();
-  if(!text) return;
+  const input = msgInput.value.trim();
+  if(!input) return;
 
-  await db.collection("chats").doc(CHAT_ID).collection("messages").add({
-    text:text,
+  msgInput.value = "";
+
+  db.collection("chats").doc(CHAT_ID).collection("messages").add({
+    text:input,
     from:CURRENT.uid,
     to:OTHER_ID,
     time:Date.now(),
     seen:false
   });
 
-  await db.collection("users").doc(OTHER_ID).update({
-    notifMsg:text,
-    notifFrom:CURRENT.uid,
-    notifTime:Date.now()
+  db.collection("chats").doc(CHAT_ID).update({
+    lastMsg:input,
+    time:Date.now()
   });
 
-  input.value="";
+  updateTyping(false);
 }
 
-/* ---------- TYPING ---------- */
-function updateTyping(isTyping){
-  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_typing"]:isTyping});
+/* TYPING */
+function updateTyping(state){
+  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_typing"]:state});
+  clearTimeout(typingTimeout);
+  if(state){
+    typingTimeout=setTimeout(()=>updateTyping(false),2000);
+  }
 }
 
 function listenTyping(){
-  const ind=document.getElementById("typingIndicator");
   db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{
-    const data=doc.data();
-    ind.style.display = data[OTHER_ID+"_typing"] ? "block" : "none";
+    const d = doc.data();
+    if(d[OTHER_ID+"_typing"]){
+      typingIndicator.style.display="block";
+    } else {
+      typingIndicator.style.display="none";
+    }
   });
-}
-
-/* ---------- BLOCK ---------- */
-async function toggleBlock(){
-  BLOCKED=!BLOCKED;
-  document.getElementById("blockBtn").innerText = BLOCKED?"Unblock":"Block";
-  await db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_blocked"]:BLOCKED});
-}
-
-/* ---------- NOTIFICATIONS SYSTEM ---------- */
-async function setupNotifications(){
-  try{
-    const permission = await Notification.requestPermission();
-    if(permission !== "granted") return;
-
-    const token = await messaging.getToken({
-      vapidKey: "YOUR_VAPID_KEY_HERE"   <!-- यहां अपनी VAPID KEY डालना है -->
-    });
-
-    await db.collection("users").doc(CURRENT.uid).update({
-      fcmToken: token
-    });
-
-    messaging.onMessage((payload)=>{
-      new Notification(payload.notification.title,{
-        body:payload.notification.body,
-        icon:"icon.png"
-      });
-    });
-
-  }catch(e){
-    console.log("Notification Error:", e);
-  }
 }
 </script>
 
