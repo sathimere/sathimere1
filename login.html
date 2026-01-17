@@ -101,7 +101,7 @@ function loginEmail() {
       if (email === "sathimere.admin@gmail.com") {
         window.location = "admin.html";
       } else {
-        window.location = "index.html";
+        window.location = "profile.html";  // ← changed ONLY THIS
       }
     })
     .catch(err => alert(err.message));
@@ -131,7 +131,7 @@ function createAccount() {
         wallet: 0,
         createdAt: Date.now()
       });
-      window.location = "index.html";
+      window.location = "profile.html"; // ← changed ONLY THIS
     })
     .catch(err => alert(err.message));
 }
@@ -199,10 +199,10 @@ async function googleFinish() {
     createdAt: Date.now()
   });
 
-  window.location = "index.html";
+  window.location = "profile.html"; // ← changed ONLY THIS
 }
 
 </script>
 
 </body>
-</html>
+  </html>
