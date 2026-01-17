@@ -113,12 +113,9 @@ function loadStatus(){
     const d=doc.data(); 
     if(!d) return; 
     // Online only if real-time online flag is true
-    if(d[OTHER_ID+"_online"]){ 
-      statusBar.innerText = "Online"; 
-    } else { 
-      const last = d.lastSeen?new Date(d.lastSeen).toLocaleTimeString():"Unknown"; 
-      statusBar.innerText = "Last seen: "+last; 
-    }
+    const otherOnline = d[OTHER_ID+"_online"]===true;
+    const lastSeen = d.lastSeen ? new Date(d.lastSeen).toLocaleTimeString() : "Unknown";
+    statusBar.innerText = otherOnline ? "Online" : "Last seen: "+lastSeen;
   });
 }
 
