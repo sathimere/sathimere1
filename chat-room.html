@@ -28,7 +28,8 @@ const db = firebase.firestore();
 body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
 .topbar { height:55px; background:#ff1493; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; width:100%; z-index:10; font-size:18px; font-weight:bold;}
 .topbar span:first-child { position:absolute; left:15px; cursor:pointer; font-size:24px;}
-#statusBar { font-size:12px; font-weight:normal; position:absolute; bottom:4px;}
+#userName { font-size:14px; position:absolute; bottom:4px; width:100%; text-align:center; }
+#statusBar { font-size:12px; font-weight:normal; position:absolute; bottom:0; left:0; right:0; text-align:center; }
 .chat-container { padding:70px 10px 100px; max-width:600px; margin:auto; display:flex; flex-direction:column; gap:10px;}
 .msg { padding:10px 15px; border-radius:15px; max-width:80%; word-wrap:break-word; position:relative;}
 .sender { background:#ff1493; color:#fff; align-self:flex-end; border-bottom-right-radius:0;}
@@ -39,8 +40,8 @@ body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
 .input-container input { flex:1; padding:10px; border-radius:20px; border:1px solid #ccc; outline:none;}
 .input-container button { background:#ff1493; color:#fff; border:none; border-radius:20px; padding:10px 15px; cursor:pointer; font-weight:bold;}
 .typing-indicator { font-size:14px; color:#666; margin-left:10px; display:none;}
-#blockBtn, #voiceBtn { position:absolute; top:8px; background:#fff; color:#ff1493; border:none; padding:5px 12px; border-radius:10px; cursor:pointer; font-weight:bold;}
-#blockBtn { right:15px;} #voiceBtn { right:110px;}
+#blockBtn, #voiceBtn { position:absolute; top:8px; background:#fff; color:#ff1493; border:none; border-radius:50%; cursor:pointer; width:35px; height:35px; font-size:20px; display:flex; align-items:center; justify-content:center;}
+#blockBtn { right:15px;} #voiceBtn { right:60px;}
 #callControls { display:none; position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:#fff; padding:10px; border-radius:10px; box-shadow:0 0 10px #ccc;}
 #callControls button { margin:5px; padding:8px 12px; border:none; border-radius:8px; cursor:pointer; font-weight:bold;}
 </style>
@@ -50,12 +51,10 @@ body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
 
 <div class="topbar">
   <span onclick="goBack()">←</span>
-  <div>
-    <div>Chat Room</div>
-    <div id="statusBar">Loading...</div>
-  </div>
-  <button id="voiceBtn" onclick="initCall()">Voice Call</button>
-  <button id="blockBtn" onclick="toggleBlock()">Block</button>
+  <div id="userName">Loading...</div>
+  <div id="statusBar">Loading...</div>
+  <button id="voiceBtn" title="Voice Call" onclick="initCall()">📞</button>
+  <button id="blockBtn" title="Block/Unblock">🚫</button>
 </div>
 
 <div class="chat-container" id="chatList">Loading...</div>
@@ -101,6 +100,8 @@ auth.onAuthStateChanged(async user=>{
   const parts=CHAT_ID.split("_");
   OTHER_ID=parts[0]===CURRENT.uid?parts[1]:parts[0];
 
+  db.collection("users").doc(OTHER_ID).get().then(doc=>{ if(doc.exists){ userName.innerText=doc.data().name || "User"; } });
+
   db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:true,lastSeen:Date.now()});
   loadStatus();
   loadMessages();
@@ -113,8 +114,8 @@ auth.onAuthStateChanged(async user=>{
 function loadStatus(){ db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{ const d=doc.data(); if(!d) return; statusBar.innerText=d[OTHER_ID+"_online"]?"Online":"Last seen: "+new Date(d.lastSeen||0).toLocaleTimeString(); });}
 
 // Block
-async function toggleBlock(){ BLOCKED=!BLOCKED; blockBtn.innerText=BLOCKED?"Unblock":"Block"; await db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_blocked"]:BLOCKED}); }
-async function checkBlockStatus(){ const doc=await db.collection("chats").doc(CHAT_ID).get(); if(doc.exists){BLOCKED=doc.data()[CURRENT.uid+"_blocked"]||false; blockBtn.innerText=BLOCKED?"Unblock":"Block";} }
+async function toggleBlock(){ BLOCKED=!BLOCKED; blockBtn.innerText=BLOCKED?"🔓":"🚫"; await db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_blocked"]:BLOCKED}); }
+async function checkBlockStatus(){ const doc=await db.collection("chats").doc(CHAT_ID).get(); if(doc.exists){BLOCKED=doc.data()[CURRENT.uid+"_blocked"]||false; blockBtn.innerText=BLOCKED?"🔓":"🚫";} }
 
 // Load messages
 function loadMessages(){
@@ -123,6 +124,8 @@ function loadMessages(){
     chatList.innerHTML="";
     snapshot.forEach(mDoc=>{
       const m=mDoc.data();
+      if(m.from!==CURRENT.uid && BLOCKED) return; // skip messages if blocked
+
       const box=document.createElement("div");
       box.className="msg "+(m.from===CURRENT.uid?"sender":"receiver");
       box.innerText=m.text;
@@ -167,11 +170,7 @@ function updateTyping(state){ db.collection("chats").doc(CHAT_ID).update({[CURRE
 function listenTyping(){ db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{ const d=doc.data(); typingIndicator.style.display=d[OTHER_ID+"_typing"] && !BLOCKED?"block":"none";});}
 
 // Notifications
-function sendNotification(msg){
-  if(Notification.permission==="granted"){
-    new Notification("New Message!",{body:msg,icon:"https://i.imgur.com/1HjVwC5.png"});
-  }
-}
+function sendNotification(msg){ if(Notification.permission==="granted"){ new Notification("New Message!",{body:msg,icon:"https://i.imgur.com/1HjVwC5.png"}); }}
 
 // ----------------- Voice Call -----------------
 async function initCall(){
@@ -217,12 +216,7 @@ async function acceptCall(){
   callControls.style.display="none";
 }
 
-function declineCall(){
-  callControls.style.display="none";
-  if(callDoc) callDoc.delete();
-  if(pc){ pc.close(); pc=null; }
-}
-
+function declineCall(){ callControls.style.display="none"; if(callDoc) callDoc.delete(); if(pc){ pc.close(); pc=null; }}
 </script>
 
 <audio id="remoteAudio" autoplay></audio>
@@ -232,4 +226,4 @@ function declineCall(){
 </div>
 
 </body>
-</html>
+  </html>
