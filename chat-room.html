@@ -40,10 +40,7 @@ body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
 .input-container input { flex:1; padding:10px; border-radius:20px; border:1px solid #ccc; outline:none;}
 .input-container button { background:#ff1493; color:#fff; border:none; border-radius:20px; padding:10px 15px; cursor:pointer; font-weight:bold;}
 .typing-indicator { font-size:14px; color:#666; margin-left:10px; display:none;}
-#blockBtn, #voiceBtn { position:absolute; top:8px; background:#fff; color:#ff1493; border:none; border-radius:50%; cursor:pointer; width:35px; height:35px; font-size:20px; display:flex; align-items:center; justify-content:center;}
-#blockBtn { right:15px;} #voiceBtn { right:60px;}
-#callControls { display:none; position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:#fff; padding:10px; border-radius:10px; box-shadow:0 0 10px #ccc;}
-#callControls button { margin:5px; padding:8px 12px; border:none; border-radius:8px; cursor:pointer; font-weight:bold;}
+#blockBtn { position:absolute; top:8px; right:15px; background:#fff; color:#ff1493; border:none; border-radius:50%; cursor:pointer; width:35px; height:35px; font-size:20px; display:flex; align-items:center; justify-content:center;}
 </style>
 </head>
 
@@ -53,7 +50,6 @@ body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
   <span onclick="goBack()">←</span>
   <div id="userName">Loading...</div>
   <div id="statusBar">Loading...</div>
-  <button id="voiceBtn" title="Voice Call" onclick="initCall()">📞</button>
   <button id="blockBtn" title="Block/Unblock">🚫</button>
 </div>
 
@@ -65,23 +61,17 @@ body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
   <button onclick="sendMessage()">Send</button>
 </div>
 
-<div id="callControls">
-  <button onclick="acceptCall()">Accept</button>
-  <button onclick="declineCall()">Decline</button>
-</div>
-
-<audio id="remoteAudio" autoplay></audio>
 <audio id="msgSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <script>
 let CURRENT=null, CHAT_ID=null, OTHER_ID=null, BLOCKED=false, typingTimeout;
-let pc=null, localStream=null, callDoc=null, blinkInt=null;
 const msgSound=document.getElementById("msgSound");
 
 // Request Notification permission
 if("Notification" in window){ Notification.requestPermission(); }
 
 // Blink title
+let blinkInt=null;
 function startBlink(){ stopBlink(); blinkInt=setInterval(()=>{document.title=document.title==="New Message!"?"Sathi Mere":"New Message!";},800);}
 function stopBlink(){ clearInterval(blinkInt); document.title="Sathi Mere";}
 
@@ -100,22 +90,44 @@ auth.onAuthStateChanged(async user=>{
   const parts=CHAT_ID.split("_");
   OTHER_ID=parts[0]===CURRENT.uid?parts[1]:parts[0];
 
-  db.collection("users").doc(OTHER_ID).get().then(doc=>{ if(doc.exists){ userName.innerText=doc.data().name || "User"; } });
+  // Show full name
+  db.collection("users").doc(OTHER_ID).get().then(doc=>{ 
+    if(doc.exists){ 
+      const data = doc.data(); 
+      userName.innerText=(data.name || "User") + " " + (data.surname || ""); 
+    } 
+  });
 
   db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:true,lastSeen:Date.now()});
   loadStatus();
   loadMessages();
   listenTyping();
   checkBlockStatus();
-  listenCallSignals();
 });
 
 // Status
-function loadStatus(){ db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{ const d=doc.data(); if(!d) return; statusBar.innerText=d[OTHER_ID+"_online"]?"Online":"Last seen: "+new Date(d.lastSeen||0).toLocaleTimeString(); });}
+function loadStatus(){ 
+  db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{ 
+    const d=doc.data(); 
+    if(!d) return; 
+    statusBar.innerText=d[OTHER_ID+"_online"]?"Online":"Last seen: "+new Date(d.lastSeen||0).toLocaleTimeString(); 
+  });
+}
 
 // Block
-async function toggleBlock(){ BLOCKED=!BLOCKED; blockBtn.innerText=BLOCKED?"🔓":"🚫"; await db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_blocked"]:BLOCKED}); }
-async function checkBlockStatus(){ const doc=await db.collection("chats").doc(CHAT_ID).get(); if(doc.exists){BLOCKED=doc.data()[CURRENT.uid+"_blocked"]||false; blockBtn.innerText=BLOCKED?"🔓":"🚫";} }
+async function toggleBlock(){ 
+  BLOCKED=!BLOCKED; 
+  blockBtn.innerText=BLOCKED?"🔓":"🚫"; 
+  await db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_blocked"]:BLOCKED}); 
+}
+async function checkBlockStatus(){ 
+  const doc=await db.collection("chats").doc(CHAT_ID).get(); 
+  if(doc.exists){
+    BLOCKED=doc.data()[CURRENT.uid+"_blocked"]||false; 
+    blockBtn.innerText=BLOCKED?"🔓":"🚫";
+  } 
+}
+blockBtn.onclick = toggleBlock;
 
 // Load messages
 function loadMessages(){
@@ -166,64 +178,25 @@ async function sendMessage(){
 }
 
 // Typing
-function updateTyping(state){ db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_typing"]:state}); clearTimeout(typingTimeout); if(state){ typingTimeout=setTimeout(()=>updateTyping(false),2000);}}
-function listenTyping(){ db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{ const d=doc.data(); typingIndicator.style.display=d[OTHER_ID+"_typing"] && !BLOCKED?"block":"none";});}
-
-// Notifications
-function sendNotification(msg){ if(Notification.permission==="granted"){ new Notification("New Message!",{body:msg,icon:"https://i.imgur.com/1HjVwC5.png"}); }}
-
-// ----------------- Voice Call -----------------
-async function initCall(){
-  if(BLOCKED){ alert("User is blocked!"); return; }
-  pc=new RTCPeerConnection();
-  localStream=await navigator.mediaDevices.getUserMedia({audio:true});
-  localStream.getTracks().forEach(track=>pc.addTrack(track,localStream));
-  pc.ontrack=e=>{ remoteAudio.srcObject=e.streams[0]; }
-  pc.onicecandidate=e=>{ if(e.candidate) callDoc.update({iceCandidates:firebase.firestore.FieldValue.arrayUnion(e.candidate)});}
-  callDoc=db.collection("calls").doc(CHAT_ID);
-  await callDoc.set({from:CURRENT.uid,to:OTHER_ID,offer:null,answer:null,iceCandidates:[]});
-  const offer=await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  await callDoc.update({offer:offer.toJSON()});
-  callControls.style.display="block";
+function updateTyping(state){ 
+  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_typing"]:state}); 
+  clearTimeout(typingTimeout); 
+  if(state){ typingTimeout=setTimeout(()=>updateTyping(false),2000);}
 }
-
-function listenCallSignals(){
-  db.collection("calls").doc(CHAT_ID).onSnapshot(async doc=>{
-    const d=doc.data();
-    if(!d) return;
-    if(d.offer && d.to===CURRENT.uid && !pc){
-      pc=new RTCPeerConnection();
-      localStream=await navigator.mediaDevices.getUserMedia({audio:true});
-      localStream.getTracks().forEach(track=>pc.addTrack(track,localStream));
-      pc.ontrack=e=>{ remoteAudio.srcObject=e.streams[0]; }
-      pc.onicecandidate=e=>{ if(e.candidate) callDoc.update({iceCandidates:firebase.firestore.FieldValue.arrayUnion(e.candidate)});}
-      callDoc=doc.ref;
-      callControls.style.display="block";
-    }
-    if(d.answer && pc){ await pc.setRemoteDescription(new RTCSessionDescription(d.answer)); callControls.style.display="none";}
-    if(d.iceCandidates && pc){ d.iceCandidates.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c))); }
+function listenTyping(){ 
+  db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{ 
+    const d=doc.data(); 
+    typingIndicator.style.display=d[OTHER_ID+"_typing"] && !BLOCKED?"block":"none";
   });
 }
 
-async function acceptCall(){
-  const docSnap=await callDoc.get();
-  const data=docSnap.data();
-  await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-  const answer=await pc.createAnswer();
-  await pc.setLocalDescription(answer);
-  await callDoc.update({answer:answer.toJSON()});
-  callControls.style.display="none";
+// Notifications
+function sendNotification(msg){ 
+  if(Notification.permission==="granted"){ 
+    new Notification("New Message!",{body:msg,icon:"https://i.imgur.com/1HjVwC5.png"}); 
+  }
 }
-
-function declineCall(){ callControls.style.display="none"; if(callDoc) callDoc.delete(); if(pc){ pc.close(); pc=null; }}
 </script>
 
-<audio id="remoteAudio" autoplay></audio>
-<div id="callControls">
-  <button onclick="acceptCall()">Accept</button>
-  <button onclick="declineCall()">Decline</button>
-</div>
-
 </body>
-  </html>
+</html>
