@@ -33,7 +33,7 @@ body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
 
 /* TOP BAR */
 .topbar {
-  height:55px;
+  height:70px;
   background:#ff1493;
   color:#fff;
   display:flex;
@@ -43,15 +43,22 @@ body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
   top:0;
   width:100%;
   z-index:10;
-  font-size:18px;
-  font-weight:bold;
+  flex-direction:column;
+  padding-top:5px;
 }
-.topbar span:first-child { position:absolute; left:15px; cursor:pointer; font-size:24px; }
-#statusBar { font-size:12px; font-weight:normal; position:absolute; bottom:4px; }
+.topbar span:first-child {
+  position:absolute; 
+  left:15px; 
+  cursor:pointer; 
+  font-size:24px;
+  top:15px;
+}
+#chatUserName { font-size:16px; font-weight:bold; margin-top:5px; cursor:pointer; }
+#statusBar { font-size:12px; }
 
 /* CHAT */
 .chat-container {
-  padding:70px 10px 100px;
+  padding:90px 10px 140px;
   max-width:600px;
   margin:auto;
   display:flex;
@@ -105,6 +112,20 @@ body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
   margin-left:10px;
   display:none;
 }
+
+/* BLOCK BUTTON */
+#blockBtn {
+  position:fixed;
+  bottom:70px;
+  right:10px;
+  background:black;
+  color:white;
+  padding:10px 15px;
+  border-radius:20px;
+  font-size:14px;
+  cursor:pointer;
+  z-index:20;
+}
 </style>
 </head>
 
@@ -112,10 +133,8 @@ body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
 
 <div class="topbar">
   <span onclick="goBack()">←</span>
-  <div>
-    <div>Chat Room</div>
-    <div id="statusBar">Loading...</div>
-  </div>
+  <div id="chatUserName">Loading...</div>
+  <div id="statusBar">Loading...</div>
 </div>
 
 <div class="chat-container" id="chatList">Loading...</div>
@@ -126,32 +145,44 @@ body { margin:0; font-family:Arial,sans-serif; background:#f2f2f2; }
   <button onclick="sendMessage()">Send</button>
 </div>
 
+<button id="blockBtn" onclick="toggleBlock()">Loading...</button>
+
 <script>
 let CURRENT = null;
 let CHAT_ID = null;
 let OTHER_ID = null;
-let BLOCKED = false;
+let BLOCKED_BY = null;
 let typingTimeout;
 
 /* SOUND */
 const msgSound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
 
-/* TITLE BLINK */
-let blinkInt;
-function startBlink(){
-  stopBlink();
-  blinkInt = setInterval(()=>{
-    document.title = document.title === "New Message!" ? "Sathi Mere" : "New Message!";
-  }, 800);
-}
-function stopBlink(){
-  clearInterval(blinkInt);
-  document.title = "Sathi Mere";
+/* Format Last Seen (WhatsApp Style) */
+function formatLastSeen(time){
+  const d = new Date(time);
+  const now = new Date();
+
+  const t = d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+
+  const daysDiff = Math.floor((now - d) / (1000*60*60*24));
+
+  if(daysDiff === 0){
+    return "Last seen today at " + t;
+  }
+  else if(daysDiff === 1){
+    return "Last seen yesterday at " + t;
+  }
+  else {
+    return "Last seen on " + d.toLocaleDateString("en-GB",{day:"2-digit",month:"short"}) + " at " + t;
+  }
 }
 
 /* BACK */
 function goBack(){
-  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:false,lastSeen:Date.now()});
+  db.collection("chats").doc(CHAT_ID).update({
+    [CURRENT.uid+"_online"]:false,
+    lastSeen:Date.now()
+  });
   location.href="chat.html";
 }
 
@@ -162,34 +193,84 @@ auth.onAuthStateChanged(async user=>{
 
   const params = new URLSearchParams(window.location.search);
   CHAT_ID = params.get("id");
-  if(!CHAT_ID) return alert("Invalid Chat Room");
 
   const parts = CHAT_ID.split("_");
   OTHER_ID = parts[0]===CURRENT.uid ? parts[1] : parts[0];
 
+  /* Load user name in top bar */
+  const u = await db.collection("users").doc(OTHER_ID).get();
+  if(u.exists){
+    document.getElementById("chatUserName").innerText = u.data().name + " " + u.data().surname;
+  }
+
+  /* CLICK → OPEN PROFILE */
+  document.getElementById("chatUserName").onclick = () => {
+    location.href = "view-profile.html?uid=" + OTHER_ID;
+  };
+
   /* Set Online */
-  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_online"]:true,lastSeen:Date.now()});
+  db.collection("chats").doc(CHAT_ID).update({
+    [CURRENT.uid+"_online"]:true,
+    lastSeen:Date.now()
+  });
 
   loadStatus();
   loadMessages();
   listenTyping();
+  loadBlockStatus();
 });
 
 /* STATUS BAR */
 function loadStatus(){
   db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{
     const d = doc.data();
-    if(!d) return;
-
     const online = d[OTHER_ID+"_online"];
     const ls = d.lastSeen || 0;
 
     if(online){
       statusBar.innerText = "Online";
     } else {
-      statusBar.innerText = "Last seen: " + new Date(ls).toLocaleTimeString();
+      statusBar.innerText = formatLastSeen(ls);
     }
   });
+}
+
+/* LOAD BLOCK STATUS */
+function loadBlockStatus(){
+  db.collection("blocks").doc(CHAT_ID).onSnapshot(doc=>{
+    BLOCKED_BY = doc.exists ? doc.data().blockedBy : null;
+    updateBlockButton();
+  });
+}
+
+function updateBlockButton(){
+  const btn = document.getElementById("blockBtn");
+
+  if(BLOCKED_BY === CURRENT.uid){
+    btn.innerText = "Unblock";
+    btn.style.background = "green";
+  } 
+  else if(BLOCKED_BY === OTHER_ID){
+    btn.innerText = "Blocked";
+    btn.style.background = "gray";
+    btn.disabled = true;
+  }
+  else {
+    btn.innerText = "Block";
+    btn.style.background = "black";
+    btn.disabled = false;
+  }
+}
+
+/* TOGGLE BLOCK */
+function toggleBlock(){
+  if(BLOCKED_BY === CURRENT.uid){
+    db.collection("blocks").doc(CHAT_ID).delete();
+  } else {
+    db.collection("blocks").doc(CHAT_ID).set({
+      blockedBy: CURRENT.uid
+    });
+  }
 }
 
 /* LOAD MESSAGES */
@@ -206,25 +287,23 @@ function loadMessages(){
         box.className = "msg " + (m.from === CURRENT.uid ? "sender" : "receiver");
         box.innerText = m.text;
 
-        /* Timestamp */
         const t = document.createElement("span");
         t.className="timestamp";
         t.innerText = new Date(m.time).toLocaleTimeString();
         box.appendChild(t);
 
-        /* Seen */
         if(m.from === CURRENT.uid){
           const s = document.createElement("span");
           s.className="seen";
           s.innerText = m.seen?"Seen":"Sent";
           box.appendChild(s);
-        } else {
+        } 
+        else {
           if(!m.seen){
             db.collection("chats").doc(CHAT_ID).collection("messages")
               .doc(mDoc.id).update({seen:true});
           }
           msgSound.play();
-          startBlink();
         }
 
         chatList.appendChild(box);
@@ -236,6 +315,11 @@ function loadMessages(){
 
 /* SEND MSG */
 async function sendMessage(){
+  if(BLOCKED_BY === OTHER_ID){
+    alert("You cannot send message. You are blocked!");
+    return;
+  }
+
   const input = msgInput.value.trim();
   if(!input) return;
 
@@ -259,7 +343,10 @@ async function sendMessage(){
 
 /* TYPING */
 function updateTyping(state){
-  db.collection("chats").doc(CHAT_ID).update({[CURRENT.uid+"_typing"]:state});
+  db.collection("chats").doc(CHAT_ID).update({
+    [CURRENT.uid+"_typing"]:state
+  });
+
   clearTimeout(typingTimeout);
   if(state){
     typingTimeout=setTimeout(()=>updateTyping(false),2000);
@@ -269,11 +356,7 @@ function updateTyping(state){
 function listenTyping(){
   db.collection("chats").doc(CHAT_ID).onSnapshot(doc=>{
     const d = doc.data();
-    if(d[OTHER_ID+"_typing"]){
-      typingIndicator.style.display="block";
-    } else {
-      typingIndicator.style.display="none";
-    }
+    typingIndicator.style.display = d[OTHER_ID+"_typing"] ? "block" : "none";
   });
 }
 </script>
